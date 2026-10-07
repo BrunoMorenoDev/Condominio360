@@ -1,0 +1,31 @@
+@model Unidad
+@{
+    ViewData["Title"] = "Eliminar unidad";
+    var tieneResidentes = Model.Residentes.Any();
+}
+<h1 class="h3 mb-3">Eliminar unidad <span class="placa">@Model.Codigo</span></h1>
+
+<div class="tarjeta-form">
+    @if (tieneResidentes)
+    {
+        <div class="alert alert-warning">
+            Esta unidad tiene @Model.Residentes.Count residente(s). Reasígnelos a otra unidad o elimínelos antes de borrarla.
+        </div>
+    }
+    else
+    {
+        <p>¿Seguro que desea eliminar esta unidad? Esta acción no se puede deshacer.</p>
+    }
+
+    <dl class="row">
+        <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">@Model.Tipo</dd>
+        <dt class="col-sm-4">Piso</dt><dd class="col-sm-8">@Model.Piso</dd>
+        <dt class="col-sm-4">Alícuota</dt><dd class="col-sm-8">@Model.Alicuota.ToString("C")</dd>
+    </dl>
+
+    <form asp-action="Delete" method="post" class="d-flex gap-2">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger" disabled="@tieneResidentes">Eliminar unidad</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>

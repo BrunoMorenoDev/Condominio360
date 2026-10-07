@@ -1,0 +1,24 @@
+@model Residente
+@{
+    ViewData["Title"] = Model.NombreCompleto;
+}
+<h1 class="h3 mb-3">@Model.NombreCompleto</h1>
+
+<div class="tarjeta-form mb-4">
+    <dl class="row mb-0">
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.Cedula)</dt><dd class="col-sm-8">@Model.Cedula</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.Correo)</dt><dd class="col-sm-8">@Model.Correo</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.Telefono)</dt><dd class="col-sm-8">@(Model.Telefono ?? "No registrado")</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.Tipo)</dt><dd class="col-sm-8">@Model.Tipo</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.FechaIngreso)</dt><dd class="col-sm-8">@Model.FechaIngreso.ToString("dd/MM/yyyy")</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.UnidadId)</dt>
+        <dd class="col-sm-8">
+            <a asp-controller="Unidades" asp-action="Details" asp-route-id="@Model.UnidadId"><span class="placa">@Model.Unidad?.Codigo</span></a>
+        </dd>
+    </dl>
+</div>
+
+<div class="d-flex gap-2">
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+    <a asp-action="Index" class="btn btn-outline-secondary">Volver a la lista</a>
+</div>

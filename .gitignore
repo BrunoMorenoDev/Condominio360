@@ -1,0 +1,17 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+.vscode/
+.idea/
+
+## Base de datos local (se crea al ejecutar)
+*.db
+*.db-shm
+*.db-wal
+
+## Sistema operativo
+.DS_Store
+Thumbs.db

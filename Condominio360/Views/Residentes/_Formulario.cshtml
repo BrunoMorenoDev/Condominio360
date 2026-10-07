@@ -1,0 +1,51 @@
+@model Residente
+@{
+    var unidades = ViewData["Unidades"] as SelectList;
+}
+<div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+<input type="hidden" asp-for="Id" />
+
+<div class="row g-3">
+    <div class="col-sm-6">
+        <label asp-for="Nombres" class="form-label"></label>
+        <input asp-for="Nombres" class="form-control" />
+        <span asp-validation-for="Nombres" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Apellidos" class="form-label"></label>
+        <input asp-for="Apellidos" class="form-control" />
+        <span asp-validation-for="Apellidos" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Cedula" class="form-label"></label>
+        <input asp-for="Cedula" class="form-control" maxlength="10" inputmode="numeric" />
+        <span asp-validation-for="Cedula" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Telefono" class="form-label"></label>
+        <input asp-for="Telefono" class="form-control" inputmode="tel" placeholder="0991234567" />
+        <span asp-validation-for="Telefono" class="text-danger small"></span>
+    </div>
+    <div class="col-12">
+        <label asp-for="Correo" class="form-label"></label>
+        <input asp-for="Correo" class="form-control" />
+        <span asp-validation-for="Correo" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-4">
+        <label asp-for="UnidadId" class="form-label"></label>
+        <select asp-for="UnidadId" asp-items="unidades" class="form-select">
+            <option value="0">Seleccione…</option>
+        </select>
+        <span asp-validation-for="UnidadId" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-4">
+        <label asp-for="Tipo" class="form-label"></label>
+        <select asp-for="Tipo" asp-items="Html.GetEnumSelectList<TipoResidente>()" class="form-select"></select>
+        <span asp-validation-for="Tipo" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-4">
+        <label asp-for="FechaIngreso" class="form-label"></label>
+        <input asp-for="FechaIngreso" class="form-control" type="date" />
+        <span asp-validation-for="FechaIngreso" class="text-danger small"></span>
+    </div>
+</div>

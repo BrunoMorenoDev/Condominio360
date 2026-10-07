@@ -1,0 +1,18 @@
+@model Residente
+@{
+    ViewData["Title"] = "Registrar residente";
+}
+<h1 class="h3 mb-3">Registrar residente</h1>
+<div class="tarjeta-form">
+    <form asp-action="Create" method="post">
+        <partial name="_Formulario" model="Model" />
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">Guardar residente</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

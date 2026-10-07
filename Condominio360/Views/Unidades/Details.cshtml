@@ -1,0 +1,39 @@
+@model Unidad
+@{
+    ViewData["Title"] = $"Unidad {Model.Codigo}";
+}
+<h1 class="h3 mb-3">Unidad <span class="placa">@Model.Codigo</span></h1>
+
+<div class="tarjeta-form mb-4">
+    <dl class="row mb-0">
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.Torre)</dt><dd class="col-sm-8">@Model.Torre</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.Numero)</dt><dd class="col-sm-8">@Model.Numero</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.Piso)</dt><dd class="col-sm-8">@Model.Piso</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.Tipo)</dt><dd class="col-sm-8">@Model.Tipo</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.AreaM2)</dt><dd class="col-sm-8">@Model.AreaM2.ToString("0.##") m²</dd>
+        <dt class="col-sm-4">@Html.DisplayNameFor(m => m.Alicuota)</dt><dd class="col-sm-8">@Model.Alicuota.ToString("C")</dd>
+    </dl>
+</div>
+
+<h2 class="h5">Residentes</h2>
+@if (!Model.Residentes.Any())
+{
+    <p class="text-secondary">Esta unidad no tiene residentes registrados.</p>
+}
+else
+{
+    <ul class="list-group mb-4">
+        @foreach (var r in Model.Residentes.OrderBy(r => r.Apellidos))
+        {
+            <li class="list-group-item d-flex justify-content-between">
+                <a asp-controller="Residentes" asp-action="Details" asp-route-id="@r.Id">@r.NombreCompleto</a>
+                <span class="text-secondary">@r.Tipo</span>
+            </li>
+        }
+    </ul>
+}
+
+<div class="d-flex gap-2">
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+    <a asp-action="Index" class="btn btn-outline-secondary">Volver a la lista</a>
+</div>

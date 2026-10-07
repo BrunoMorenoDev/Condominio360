@@ -1,0 +1,32 @@
+@{
+    ViewData["Title"] = "Inicio";
+    var autenticado = User.Identity?.IsAuthenticated == true;
+}
+<section class="portada">
+    <div class="row align-items-center g-5">
+        <div class="col-lg-7">
+            <h1 class="portada-titulo">La administración de tu condominio, en un solo lugar.</h1>
+            <p class="portada-texto">
+                Registra unidades y residentes, consulta quién vive en cada departamento y conoce
+                cuánto se recauda en alícuotas cada mes.
+            </p>
+            @if (autenticado)
+            {
+                <a asp-controller="Panel" asp-action="Index" class="btn btn-primary btn-lg">Ir al panel</a>
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-lg">Iniciar sesión</a>
+                <p class="small text-secondary mt-3 mb-0">El acceso a unidades y residentes es solo para la administración.</p>
+            }
+        </div>
+        <div class="col-lg-5">
+            <div class="fachada" aria-hidden="true">
+                <div class="fachada-fila"><span class="placa">A-301</span><span class="placa">A-302</span></div>
+                <div class="fachada-fila"><span class="placa">A-201</span><span class="placa">A-202</span></div>
+                <div class="fachada-fila"><span class="placa">A-101</span><span class="placa">A-102</span></div>
+                <div class="fachada-base">Torre A</div>
+            </div>
+        </div>
+    </div>
+</section>
