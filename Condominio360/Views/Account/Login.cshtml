@@ -1,0 +1,52 @@
+@model LoginViewModel
+@{
+    ViewData["Title"] = "Iniciar sesión";
+}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-5">
+        <div class="tarjeta-login">
+            <div class="text-center mb-4">
+                <span class="placa placa-grande">360</span>
+                <h1 class="h4 mt-3 mb-1">Iniciar sesión</h1>
+                <p class="text-secondary small mb-0">Acceso para la administración del condominio</p>
+            </div>
+
+            <partial name="_Alertas" />
+
+            @if (!string.IsNullOrEmpty(Model.ReturnUrl))
+            {
+                <div class="alert alert-warning small" role="alert">
+                    <i class="bi bi-lock"></i> Debes iniciar sesión para entrar a <strong>@Model.ReturnUrl</strong>.
+                </div>
+            }
+
+            <form asp-action="Login" method="post" novalidate>
+                <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+                <input type="hidden" asp-for="ReturnUrl" />
+
+                <div class="mb-3">
+                    <label asp-for="NombreUsuario" class="form-label"></label>
+                    <input asp-for="NombreUsuario" class="form-control" autocomplete="username" autofocus />
+                    <span asp-validation-for="NombreUsuario" class="text-danger small"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Password" class="form-label"></label>
+                    <input asp-for="Password" class="form-control" autocomplete="current-password" />
+                    <span asp-validation-for="Password" class="text-danger small"></span>
+                </div>
+
+                <div class="form-check mb-4">
+                    <input asp-for="Recordarme" class="form-check-input" />
+                    <label asp-for="Recordarme" class="form-check-label"></label>
+                </div>
+
+                <button type="submit" class="btn btn-primary w-100">Iniciar sesión</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
