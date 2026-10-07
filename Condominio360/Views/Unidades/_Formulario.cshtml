@@ -1,0 +1,36 @@
+@model Unidad
+<div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+<input type="hidden" asp-for="Id" />
+
+<div class="row g-3">
+    <div class="col-sm-6">
+        <label asp-for="Torre" class="form-label"></label>
+        <input asp-for="Torre" class="form-control" placeholder="A" />
+        <span asp-validation-for="Torre" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Numero" class="form-label"></label>
+        <input asp-for="Numero" class="form-control" placeholder="101" />
+        <span asp-validation-for="Numero" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Piso" class="form-label"></label>
+        <input asp-for="Piso" class="form-control" type="number" min="0" max="60" />
+        <span asp-validation-for="Piso" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Tipo" class="form-label"></label>
+        <select asp-for="Tipo" asp-items="Html.GetEnumSelectList<TipoUnidad>()" class="form-select"></select>
+        <span asp-validation-for="Tipo" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="AreaM2" class="form-label"></label>
+        <input asp-for="AreaM2" class="form-control" type="number" step="0.01" min="10" />
+        <span asp-validation-for="AreaM2" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Alicuota" class="form-label"></label>
+        <input asp-for="Alicuota" class="form-control" type="number" step="0.01" min="0" />
+        <span asp-validation-for="Alicuota" class="text-danger small"></span>
+    </div>
+</div>
