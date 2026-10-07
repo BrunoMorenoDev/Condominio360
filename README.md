@@ -191,9 +191,8 @@ Condominio360/
 
 | Nombre | GitHub |
 |---|---|
-| Jose | [@usuario](https://github.com/usuario) |
-| Integrante 2 | [@usuario](https://github.com/usuario) |
-| Integrante 3 | [@usuario](https://github.com/usuario) |
+| Jose Freire| [@JoseFreire29](https://github.com/JoseFreire29) |
+| Bruno Moreno| [@BrunoMorenoDev](https://github.com/BrunoMorenoDev) |
 
 Materia: Ingeniería Web · Facultad de Ingeniería y Ciencias Aplicadas (FICA) · UDLA
 
