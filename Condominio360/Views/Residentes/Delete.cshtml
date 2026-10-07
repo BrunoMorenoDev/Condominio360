@@ -1,0 +1,21 @@
+@model Residente
+@{
+    ViewData["Title"] = "Eliminar residente";
+}
+<h1 class="h3 mb-3">Eliminar residente</h1>
+
+<div class="tarjeta-form">
+    <p>¿Seguro que desea eliminar a <strong>@Model.NombreCompleto</strong>? Esta acción no se puede deshacer.</p>
+
+    <dl class="row">
+        <dt class="col-sm-4">Cédula</dt><dd class="col-sm-8">@Model.Cedula</dd>
+        <dt class="col-sm-4">Unidad</dt><dd class="col-sm-8"><span class="placa">@Model.Unidad?.Codigo</span></dd>
+        <dt class="col-sm-4">Tipo</dt><dd class="col-sm-8">@Model.Tipo</dd>
+    </dl>
+
+    <form asp-action="Delete" method="post" class="d-flex gap-2">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Eliminar residente</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>
