@@ -18,7 +18,6 @@
 
 - [Descripción del proyecto](#-descripción-del-proyecto)
 - [Estado del proyecto](#-estado-del-proyecto)
-- [Demostración](#-demostración)
 - [Funcionalidades](#-funcionalidades)
 - [Tecnologías utilizadas](#-tecnologías-utilizadas)
 - [Acceso al proyecto y ejecución](#-acceso-al-proyecto-y-ejecución)
@@ -47,15 +46,6 @@ Proyecto desarrollado para la materia **Ingeniería Web** (Universidad de las Am
 | Login con usuario y contraseña | ✅ |
 | URLs protegidas inaccesibles sin autenticación | ✅ |
 
-## 🎥 Demostración
-
-📹 **Video (máx. 3 min):** [Ver en Loom / YouTube](https://ENLACE-DEL-VIDEO)
-
-El video muestra:
-1. Intento de abrir `/Unidades` sin sesión → la app redirige al login.
-2. Login con credenciales incorrectas → mensaje de error.
-3. Login correcto → acceso al panel y al CRUD.
-4. Cierre de sesión → las URLs protegidas vuelven a pedir login.
 
 ## ✨ Funcionalidades
 
