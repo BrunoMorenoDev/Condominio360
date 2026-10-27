@@ -15,10 +15,12 @@
         <dd class="col-sm-8">
             <a asp-controller="Unidades" asp-action="Details" asp-route-id="@Model.UnidadId"><span class="placa">@Model.Unidad?.Codigo</span></a>
         </dd>
+        <dt class="col-sm-4">Responsable de pago</dt><dd class="col-sm-8">@(Model.ResponsablePago ? "Sí" : "No")</dd>
     </dl>
 </div>
 
-<div class="d-flex gap-2">
+<div class="d-flex flex-wrap gap-2">
     <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+    <a asp-controller="EstadoCuenta" asp-action="Index" asp-route-unidadId="@Model.UnidadId" class="btn btn-outline-primary"><i class="bi bi-receipt"></i> Estado de cuenta de la unidad</a>
     <a asp-action="Index" class="btn btn-outline-secondary">Volver a la lista</a>
 </div>
