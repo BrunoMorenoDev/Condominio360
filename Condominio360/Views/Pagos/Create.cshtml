@@ -1,0 +1,23 @@
+@model PagoFormViewModel
+@{
+    ViewData["Title"] = "Registrar pago";
+}
+<div class="migas"><a asp-action="Index">Pagos</a> › Registrar</div>
+<h1 class="h3 mb-1">Registrar pago recibido en administración</h1>
+<p class="text-secondary">El pago se guarda como verificado y se distribuye automáticamente: cuotas más antiguas primero, recargo antes que capital.</p>
+
+<div class="tarjeta-form">
+    <form asp-action="Create" method="post" enctype="multipart/form-data">
+        <partial name="_Formulario" model="Model" />
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">Registrar y aplicar pago</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/cascada.js" asp-append-version="true"></script>
+    <script src="~/js/pago-form.js" asp-append-version="true"></script>
+}

@@ -6,12 +6,12 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Condominio360.Controllers;
 
-/// <summary>CRUD de unidades del condominio. Sección protegida.</summary>
-[Authorize]
+/// <summary>CRUD de unidades del condominio. Solo administradores.</summary>
+[Authorize(Roles = Rol.Administrador)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
 public class UnidadesController : Controller
 {
-    private const string CamposPermitidos = "Id,Torre,Numero,Piso,Tipo,AreaM2,Alicuota";
+    private const string CamposPermitidos = "Id,Torre,Numero,Piso,Tipo,AreaM2,Alicuota,Activa";
     private readonly AppDbContext _db;
 
     public UnidadesController(AppDbContext db) => _db = db;
@@ -117,6 +117,13 @@ public class UnidadesController : Controller
         if (unidad.Residentes.Any())
         {
             TempData["Error"] = $"La unidad {unidad.Codigo} tiene residentes registrados. Reasígnelos o elimínelos primero.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        // El historial de cobranza no se borra: la unidad se puede desactivar en su lugar
+        if (await _db.Cuotas.AnyAsync(c => c.UnidadId == id) || await _db.Pagos.AnyAsync(p => p.UnidadId == id))
+        {
+            TempData["Error"] = $"La unidad {unidad.Codigo} tiene cuotas o pagos registrados. Desactívela en lugar de eliminarla.";
             return RedirectToAction(nameof(Index));
         }
 

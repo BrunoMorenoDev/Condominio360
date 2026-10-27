@@ -1,0 +1,87 @@
+@model Cuota
+@{
+    ViewData["Title"] = $"Cuota {Model.Periodo}";
+    var calc = ViewData["Calculo"] as CuotaFila;
+    var cfg = ViewData["Configuracion"] as ConfiguracionCobro;
+}
+<div class="migas"><a asp-action="Index">Cuotas</a> › Detalle</div>
+<h1 class="h3 mb-3">Cuota @Model.Periodo <span class="placa">@Model.Unidad?.Codigo</span></h1>
+
+<partial name="_Alertas" />
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="seccion">
+            <h2>Datos de la cuota</h2>
+            <dl class="row mb-0">
+                <dt class="col-6">Monto (alícuota)</dt><dd class="col-6 text-end monto">@Model.Monto.ToString("C")</dd>
+                <dt class="col-6">Fecha de emisión</dt><dd class="col-6 text-end">@Model.FechaEmision.ToString("dd/MM/yyyy")</dd>
+                <dt class="col-6">Fecha de vencimiento</dt><dd class="col-6 text-end">@Model.FechaVencimiento.ToString("dd/MM/yyyy")</dd>
+                @if (cfg is not null)
+                {
+                    <dt class="col-6">Límite sin recargo</dt><dd class="col-6 text-end">@cfg.FechaLimite(Model.FechaVencimiento).ToString("dd/MM/yyyy")</dd>
+                }
+                <dt class="col-6">Capital pagado</dt><dd class="col-6 text-end monto">@Model.CapitalPagado.ToString("C")</dd>
+                <dt class="col-6">Recargo pagado</dt><dd class="col-6 text-end monto">@Model.RecargoPagado.ToString("C")</dd>
+                <dt class="col-6">Generada por</dt><dd class="col-6 text-end">@Model.GeneradaPorUsuario?.NombreCompleto</dd>
+            </dl>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="seccion">
+            <h2>Cálculo a hoy (@DateTime.Today.ToString("dd/MM/yyyy"))</h2>
+            @if (calc is null)
+            {
+                <p class="text-danger mb-0">No hay configuración de cobro.</p>
+            }
+            else
+            {
+                <dl class="row mb-3">
+                    <dt class="col-6">Días de atraso</dt><dd class="col-6 text-end">@calc.DiasAtraso</dd>
+                    <dt class="col-6">Meses de atraso</dt><dd class="col-6 text-end">@calc.MesesAtraso</dd>
+                    <dt class="col-6">Capital pendiente</dt><dd class="col-6 text-end monto">@Model.CapitalPendiente().ToString("C")</dd>
+                    <dt class="col-6">Recargo (@((cfg!.TasaRecargoMensual * 100).ToString("0.##")) % × @calc.MesesAtraso)</dt><dd class="col-6 text-end monto">@calc.Recargo.ToString("C")</dd>
+                    <dt class="col-6">Saldo</dt><dd class="col-6 text-end monto fw-bold">@calc.Saldo.ToString("C")</dd>
+                    <dt class="col-6">Estado</dt><dd class="col-6 text-end"><span class="@Formato.ClaseEstado(calc.Estado)">@calc.Estado</span></dd>
+                </dl>
+            }
+            @if (Model.Estado != EstadoCuota.Anulada && Model.CapitalPagado == 0 && Model.RecargoPagado == 0)
+            {
+                <form asp-action="Anular" asp-route-id="@Model.Id" method="post"
+                      onsubmit="return confirm('¿Anular esta cuota? Dejará de contar en el saldo de la unidad.');">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-circle"></i> Anular cuota</button>
+                </form>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="seccion">
+    <h2>Pagos aplicados</h2>
+    @if (!Model.Aplicaciones.Any())
+    {
+        <p class="text-secondary mb-0">Esta cuota no ha recibido pagos.</p>
+    }
+    else
+    {
+        <table class="table table-sm align-middle mb-0">
+            <thead><tr><th>Pago</th><th>Fecha</th><th class="text-end">A recargo</th><th class="text-end">A capital</th></tr></thead>
+            <tbody>
+                @foreach (var a in Model.Aplicaciones.OrderBy(a => a.Pago?.FechaPago))
+                {
+                    <tr>
+                        <td><a asp-controller="Pagos" asp-action="Details" asp-route-id="@a.PagoId">#@a.PagoId</a></td>
+                        <td>@a.Pago?.FechaPago.ToString("dd/MM/yyyy")</td>
+                        <td class="text-end monto">@a.MontoRecargo.ToString("C")</td>
+                        <td class="text-end monto">@a.MontoCapital.ToString("C")</td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    }
+</div>
+
+<div class="d-flex gap-2">
+    <a asp-controller="EstadoCuenta" asp-action="Index" asp-route-unidadId="@Model.UnidadId" class="btn btn-outline-primary"><i class="bi bi-receipt"></i> Estado de cuenta de la unidad</a>
+    <a asp-action="Index" asp-route-anio="@Model.Anio" asp-route-mes="@Model.Mes" class="btn btn-outline-secondary">Volver</a>
+</div>

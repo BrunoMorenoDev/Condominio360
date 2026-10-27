@@ -4,40 +4,52 @@ using Microsoft.AspNetCore.Identity;
 namespace Condominio360.Data;
 
 /// <summary>
-/// Crea el usuario administrador y datos de ejemplo la primera vez que se ejecuta la app.
+/// Garantiza los datos mínimos para poder usar el sistema en una base vacía:
+/// los tres roles, el usuario administrador y una configuración de cobro.
+/// Los datos de ejemplo completos están en database/03_datos_ejemplo.sql.
 /// </summary>
 public static class DbSeeder
 {
     public static void Seed(AppDbContext db, IPasswordHasher<Usuario> hasher, IConfiguration config)
     {
+        if (!db.Roles.Any())
+        {
+            db.Roles.AddRange(
+                new Rol { Nombre = Rol.Administrador, Descripcion = "Gestiona unidades, residentes, cobranza, áreas comunales y usuarios" },
+                new Rol { Nombre = Rol.Residente, Descripcion = "Consulta su estado de cuenta, reporta pagos, reserva áreas y autoriza visitas" },
+                new Rol { Nombre = Rol.Guardia, Descripcion = "Controla el ingreso y salida de visitas en la garita" });
+            db.SaveChanges();
+        }
+
         if (!db.Usuarios.Any())
         {
+            var rolAdmin = db.Roles.First(r => r.Nombre == Rol.Administrador);
             var admin = new Usuario
             {
                 NombreUsuario = (config["AdminSeed:Usuario"] ?? "admin").Trim().ToLowerInvariant(),
                 NombreCompleto = config["AdminSeed:NombreCompleto"] ?? "Administrador General",
-                Rol = "Administrador"
+                Correo = config["AdminSeed:Correo"] ?? "admin@condominio360.ec",
+                RolId = rolAdmin.Id,
+                Activo = true,
+                CreadoEn = DateTime.Now
             };
             admin.PasswordHash = hasher.HashPassword(admin, config["AdminSeed:Password"] ?? "Admin123*");
             db.Usuarios.Add(admin);
+            db.SaveChanges();
         }
 
-        if (!db.Unidades.Any())
+        if (!db.ConfiguracionesCobro.Any())
         {
-            var a101 = new Unidad { Torre = "A", Numero = "101", Piso = 1, Tipo = TipoUnidad.Departamento, AreaM2 = 85.50m, Alicuota = 72.00m };
-            var a202 = new Unidad { Torre = "A", Numero = "202", Piso = 2, Tipo = TipoUnidad.Departamento, AreaM2 = 110.00m, Alicuota = 95.00m };
-            var b301 = new Unidad { Torre = "B", Numero = "301", Piso = 3, Tipo = TipoUnidad.Departamento, AreaM2 = 64.30m, Alicuota = 58.50m };
-            var l01  = new Unidad { Torre = "PB", Numero = "L-01", Piso = 0, Tipo = TipoUnidad.Local, AreaM2 = 40.00m, Alicuota = 45.00m };
-
-            db.Unidades.AddRange(a101, a202, b301, l01);
-
-            db.Residentes.AddRange(
-                new Residente { Nombres = "María José", Apellidos = "Andrade Ruiz", Cedula = "1712345678", Correo = "mjandrade@correo.com", Telefono = "0991234567", Tipo = TipoResidente.Propietario, FechaIngreso = new DateTime(2022, 3, 15), Unidad = a101 },
-                new Residente { Nombres = "Carlos", Apellidos = "Mena Vaca", Cedula = "1723456789", Correo = "cmena@correo.com", Telefono = "0987654321", Tipo = TipoResidente.Arrendatario, FechaIngreso = new DateTime(2024, 8, 1), Unidad = a202 },
-                new Residente { Nombres = "Ana Lucía", Apellidos = "Torres Paz", Cedula = "1709876543", Correo = "altorres@correo.com", Tipo = TipoResidente.Propietario, FechaIngreso = new DateTime(2019, 11, 20), Unidad = b301 }
-            );
+            var adminId = db.Usuarios.OrderBy(u => u.Id).Select(u => u.Id).First();
+            db.ConfiguracionesCobro.Add(new ConfiguracionCobro
+            {
+                DiaVencimiento = 10,
+                DiasGracia = 5,
+                TasaRecargoMensual = 0.015m,
+                VigenteDesde = new DateTime(DateTime.Today.Year, 1, 1),
+                ActualizadoPor = adminId
+            });
+            db.SaveChanges();
         }
-
-        db.SaveChanges();
     }
 }

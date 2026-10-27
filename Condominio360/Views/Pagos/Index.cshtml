@@ -1,0 +1,93 @@
+@model PagosIndexViewModel
+@{
+    ViewData["Title"] = "Pagos";
+}
+<div class="migas">Cobranza › Pagos</div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Pagos</h1>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-cash"></i> Registrar pago recibido</a>
+</div>
+
+<partial name="_Alertas" />
+
+@if (Model.PorVerificar > 0 && Model.Estado != EstadoPago.PorVerificar)
+{
+    <div class="aviso-regla mb-3">
+        <i class="bi bi-hourglass-split"></i> Hay <strong>@Model.PorVerificar</strong> pago(s) reportado(s) por residentes pendientes de verificación.
+        <a asp-action="Index" asp-route-estado="PorVerificar">Ver pendientes ›</a>
+    </div>
+}
+
+<form asp-action="Index" method="get" class="filtros row g-2 align-items-end">
+    <div class="col-6 col-md-3">
+        <label class="form-label" for="estado">Estado</label>
+        <select id="estado" name="estado" class="form-select">
+            <option value="">Todos</option>
+            @foreach (var e in Enum.GetValues<EstadoPago>())
+            {
+                <option value="@e" selected="@(Model.Estado == e)">@Formato.Texto(e)</option>
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label" for="torre">Torre / bloque</label>
+        <select id="torre" name="torre" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var t in Model.Torres)
+            {
+                <option value="@t" selected="@(Model.Torre == t)">@t</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+    </div>
+</form>
+
+@if (!Model.Pagos.Any())
+{
+    <div class="vacio"><p class="mb-0">No hay pagos para los filtros seleccionados.</p></div>
+}
+else
+{
+    <div class="table-responsive tabla-caja">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Fecha</th>
+                    <th>Unidad</th>
+                    <th>Pagado por</th>
+                    <th>Método</th>
+                    <th>Referencia</th>
+                    <th class="text-end">Monto</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var p in Model.Pagos)
+                {
+                    <tr>
+                        <td class="text-secondary">@p.Id</td>
+                        <td>@p.FechaPago.ToString("dd/MM/yyyy")</td>
+                        <td><span class="placa">@p.Unidad?.Codigo</span></td>
+                        <td>@(p.Residente?.NombreCompleto ?? "—")</td>
+                        <td>@Formato.Texto(p.Metodo)</td>
+                        <td>@(p.Referencia ?? "—")</td>
+                        <td class="text-end monto">@p.Monto.ToString("C")</td>
+                        <td><span class="@Formato.ClaseEstado(p.Estado)">@Formato.Texto(p.Estado)</span></td>
+                        <td class="text-end text-nowrap">
+                            @if (p.Estado == EstadoPago.PorVerificar)
+                            {
+                                <a asp-action="Verificar" asp-route-id="@p.Id" class="btn btn-sm btn-primary">Verificar</a>
+                                <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i><span class="visually-hidden">Editar</span></a>
+                            }
+                            <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary" title="Ver"><i class="bi bi-eye"></i><span class="visually-hidden">Ver</span></a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

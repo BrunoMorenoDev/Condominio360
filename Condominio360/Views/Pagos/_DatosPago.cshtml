@@ -1,0 +1,31 @@
+@model Pago
+<dl class="row mb-0">
+    <dt class="col-sm-5">Unidad</dt><dd class="col-sm-7"><span class="placa">@Model.Unidad?.Codigo</span></dd>
+    <dt class="col-sm-5">Pagado por</dt><dd class="col-sm-7">@(Model.Residente?.NombreCompleto ?? "—")</dd>
+    <dt class="col-sm-5">Fecha de pago</dt><dd class="col-sm-7">@Model.FechaPago.ToString("dd/MM/yyyy")</dd>
+    <dt class="col-sm-5">Monto</dt><dd class="col-sm-7 monto fw-bold">@Model.Monto.ToString("C")</dd>
+    <dt class="col-sm-5">Método</dt><dd class="col-sm-7">@Formato.Texto(Model.Metodo)</dd>
+    <dt class="col-sm-5">Referencia</dt><dd class="col-sm-7">@(Model.Referencia ?? "—")</dd>
+    <dt class="col-sm-5">Comprobante</dt>
+    <dd class="col-sm-7">
+        @if (string.IsNullOrEmpty(Model.Comprobante))
+        {
+            <span class="text-secondary">Sin comprobante</span>
+        }
+        else
+        {
+            <a asp-controller="Pagos" asp-action="Comprobante" asp-route-id="@Model.Id" target="_blank"><i class="bi bi-file-earmark-image"></i> Ver comprobante</a>
+        }
+    </dd>
+    <dt class="col-sm-5">Registrado por</dt><dd class="col-sm-7">@Model.RegistradoPorUsuario?.NombreCompleto</dd>
+    <dt class="col-sm-5">Estado</dt><dd class="col-sm-7"><span class="@Formato.ClaseEstado(Model.Estado)">@Formato.Texto(Model.Estado)</span></dd>
+    @if (Model.FechaVerificacion is not null)
+    {
+        <dt class="col-sm-5">@(Model.Estado == EstadoPago.Rechazado ? "Rechazado" : "Verificado") por</dt>
+        <dd class="col-sm-7">@Model.VerificadoPorUsuario?.NombreCompleto · @Model.FechaVerificacion.Value.ToString("dd/MM/yyyy HH:mm")</dd>
+    }
+    @if (!string.IsNullOrEmpty(Model.Observacion))
+    {
+        <dt class="col-sm-5">Observación</dt><dd class="col-sm-7">@Model.Observacion</dd>
+    }
+</dl>

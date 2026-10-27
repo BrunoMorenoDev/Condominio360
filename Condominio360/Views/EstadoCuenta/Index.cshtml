@@ -1,0 +1,179 @@
+@model EstadoCuentaViewModel
+@{
+    ViewData["Title"] = Model.Unidad is null ? "Estado de cuenta" : $"Estado de cuenta {Model.Unidad.Codigo}";
+    var u = Model.Unidad;
+}
+<div class="migas">Cobranza › Estado de cuenta</div>
+
+@* Selección de la unidad con dropdowns en cascada (Torre → Unidad) *@
+<form asp-action="Index" method="get" class="filtros row g-2 align-items-end">
+    <div class="col-6 col-md-3">
+        <label class="form-label" for="Torre">Torre / bloque</label>
+        <select id="Torre" name="torre" class="form-select" asp-items="Model.Torres"
+                data-cascada-destino="#UnidadId"
+                data-cascada-url="@Url.Action("Unidades", "Catalogos")?torre=">
+            <option value="">Seleccione…</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label" for="UnidadId">Unidad</label>
+        <select id="UnidadId" name="unidadId" class="form-select" asp-items="Model.Unidades"
+                data-vacio="Seleccione…" data-sin-datos="Sin unidades">
+            <option value="">@(Model.Unidades.Any() ? "Seleccione…" : "Primero elija la torre")</option>
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label" for="corte">Fecha de corte</label>
+        <input id="corte" name="corte" type="date" class="form-control" value="@Model.Corte.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-6 col-md-3">
+        <button type="submit" class="btn btn-primary w-100">Consultar</button>
+    </div>
+</form>
+
+@if (u is null)
+{
+    <div class="vacio"><p class="mb-0">Elija una torre y una unidad para ver su estado de cuenta.</p></div>
+}
+else
+{
+    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+        <div>
+            <h1 class="h3 mb-1"><span class="placa placa-grande">@u.Codigo</span> Estado de cuenta</h1>
+            <div class="text-secondary">
+                @u.Tipo · Torre @u.Torre · Piso @u.Piso · @u.AreaM2.ToString("0.##") m² ·
+                Responsable: @(Model.Responsable?.NombreCompleto ?? "sin responsable registrado")
+                @if (!u.Activa) { <span class="estado estado-neutro ms-1">Inactiva</span> }
+            </div>
+        </div>
+        <a asp-controller="Pagos" asp-action="Create" asp-route-unidadId="@u.Id" class="btn btn-laton"><i class="bi bi-plus-lg"></i> Registrar pago</a>
+    </div>
+
+    @if (Model.Configuracion is null)
+    {
+        <div class="alert alert-warning">No existe una configuración de cobro.</div>
+    }
+    else
+    {
+        <div class="row g-3 mb-3">
+            <div class="col-6 col-lg-3">
+                <div class="kpi">
+                    <div class="kpi-etiqueta">Saldo total</div>
+                    <div class="kpi-valor">@Model.SaldoTotal.ToString("C")</div>
+                    <div class="kpi-nota">al @Model.Corte.ToString("dd/MM/yyyy")</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="kpi">
+                    <div class="kpi-etiqueta">Saldo vencido</div>
+                    <div class="kpi-valor @(Model.SaldoVencido > 0 ? "negativo" : "")">@Model.SaldoVencido.ToString("C")</div>
+                    <div class="kpi-nota">@Model.CuotasVencidas cuota(s) · @Model.DiasMoraMasAntigua días de mora</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="kpi">
+                    <div class="kpi-etiqueta">Recargos acumulados</div>
+                    <div class="kpi-valor">@Model.RecargosAcumulados.ToString("C")</div>
+                    <div class="kpi-nota">@((Model.Configuracion.TasaRecargoMensual * 100).ToString("0.##")) % mensual sobre capital pendiente</div>
+                </div>
+            </div>
+            <div class="col-6 col-lg-3">
+                <div class="kpi">
+                    <div class="kpi-etiqueta">Clasificación</div>
+                    <div class="kpi-valor"><span class="@Formato.ClaseClasificacion(Model.Clasificacion)">@Formato.Texto(Model.Clasificacion)</span></div>
+                    <div class="kpi-nota">
+                        @((Model.Clasificacion is ClasificacionMorosidad.Moroso or ClasificacionMorosidad.MorosoCritico)
+                            ? "No puede reservar áreas comunales" : "Puede reservar áreas comunales")
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="seccion">
+            <h2>Cuotas</h2>
+            @if (!Model.Cuotas.Any())
+            {
+                <p class="text-secondary mb-0">No hay cuotas emitidas hasta la fecha de corte.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Periodo</th><th>Vence</th><th class="text-end">Alícuota</th>
+                                <th class="text-center">Meses de atraso</th><th class="text-end">Recargo</th>
+                                <th class="text-end">Pagado</th><th class="text-end">Saldo</th><th>Estado</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var f in Model.Cuotas)
+                            {
+                                <tr>
+                                    <td><a asp-controller="Cuotas" asp-action="Details" asp-route-id="@f.Cuota.Id">@f.Cuota.Periodo</a></td>
+                                    <td>@f.Cuota.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                                    <td class="text-end monto">@f.Cuota.Monto.ToString("C")</td>
+                                    <td class="text-center">@(f.MesesAtraso == 0 ? "—" : f.MesesAtraso.ToString())</td>
+                                    <td class="text-end monto">@f.Recargo.ToString("C")</td>
+                                    <td class="text-end monto">@f.Pagado.ToString("C")</td>
+                                    <td class="text-end monto fw-bold">@f.Saldo.ToString("C")</td>
+                                    <td><span class="@Formato.ClaseEstado(f.Estado)">@f.Estado</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+                <p class="texto-pequeno mt-2 mb-0">
+                    Fecha límite sin recargo = vencimiento + @Model.Configuracion.DiasGracia días.
+                    Meses de atraso = ⌈días de atraso / 30⌉.
+                </p>
+            }
+        </div>
+
+        <div class="seccion">
+            <h2>Historial de pagos</h2>
+            @if (!Model.Pagos.Any())
+            {
+                <p class="text-secondary mb-0">La unidad no registra pagos.</p>
+            }
+            else
+            {
+                <div class="table-responsive">
+                    <table class="table table-sm align-middle mb-0">
+                        <thead>
+                            <tr><th>Fecha</th><th>Método</th><th>Referencia</th><th class="text-end">Monto</th><th>Aplicado a</th><th>Registrado por</th><th>Estado</th></tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var p in Model.Pagos)
+                            {
+                                <tr>
+                                    <td><a asp-controller="Pagos" asp-action="Details" asp-route-id="@p.Id">@p.FechaPago.ToString("dd/MM/yyyy")</a></td>
+                                    <td>@Formato.Texto(p.Metodo)</td>
+                                    <td>@(p.Referencia ?? "—")</td>
+                                    <td class="text-end monto">@p.Monto.ToString("C")</td>
+                                    <td class="texto-pequeno">
+                                        @if (p.Aplicaciones.Any())
+                                        {
+                                            @(string.Join(" · ", p.Aplicaciones.OrderBy(a => a.Cuota?.FechaVencimiento)
+                                                .Select(a => $"{a.Cuota?.Periodo} (recargo {a.MontoRecargo:C}, capital {a.MontoCapital:C})")))
+                                        }
+                                        else
+                                        {
+                                            @(p.Estado == EstadoPago.Rechazado ? p.Observacion : "—")
+                                        }
+                                    </td>
+                                    <td>@p.RegistradoPorUsuario?.NombreCompleto</td>
+                                    <td><span class="@Formato.ClaseEstado(p.Estado)">@Formato.Texto(p.Estado)</span></td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+        </div>
+    }
+}
+
+@section Scripts {
+    <script src="~/js/cascada.js" asp-append-version="true"></script>
+}

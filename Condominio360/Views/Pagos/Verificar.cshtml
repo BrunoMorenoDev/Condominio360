@@ -1,0 +1,86 @@
+@model VerificarPagoViewModel
+@{
+    ViewData["Title"] = $"Verificar pago #{Model.Pago.Id}";
+    var d = Model.Distribucion;
+    var puedeVerificar = Model.Error is null && d is not null;
+}
+<div class="migas"><a asp-action="Index" asp-route-estado="PorVerificar">Pagos por verificar</a> › Pago #@Model.Pago.Id</div>
+<h1 class="h3 mb-1">Verificar pago</h1>
+<p class="text-secondary">Revise el comprobante. Al verificar, el sistema distribuye el monto desde la cuota más antigua: primero recargo, luego capital.</p>
+
+<partial name="_Alertas" />
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="seccion">
+            <h2>Datos del pago</h2>
+            <partial name="_DatosPago" model="Model.Pago" />
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="seccion">
+            <h2>Vista previa de la distribución</h2>
+
+            @if (Model.Error is not null)
+            {
+                <div class="alert alert-warning">@Model.Error</div>
+            }
+
+            @if (d is not null && d.Lineas.Any())
+            {
+                <table class="table table-sm align-middle">
+                    <thead>
+                        <tr><th>Cuota</th><th class="text-end">Recargo</th><th class="text-end">Capital</th><th class="text-end">Saldo final</th><th>Nuevo estado</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var l in d.Lineas)
+                        {
+                            <tr>
+                                <td>
+                                    @l.Cuota.Periodo
+                                    <div class="texto-pequeno">@(l.DiasAtraso > 0 ? $"vencida · {l.DiasAtraso} días" : "en plazo")</div>
+                                </td>
+                                <td class="text-end monto">@l.RecargoAplicado.ToString("C")</td>
+                                <td class="text-end monto">@l.CapitalAplicado.ToString("C")</td>
+                                <td class="text-end monto">@l.SaldoFinal.ToString("C")</td>
+                                <td><span class="@Formato.ClaseEstado(l.NuevoEstado)">@l.NuevoEstado</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>Total aplicado</td>
+                            <td class="text-end monto">@d.TotalRecargo.ToString("C")</td>
+                            <td class="text-end monto">@d.TotalCapital.ToString("C")</td>
+                            <td class="text-end monto">@((d.TotalRecargo + d.TotalCapital).ToString("C"))</td>
+                            <td></td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="aviso-regla mb-3">
+                    Saldo total de la unidad a la fecha del pago: <strong>@d.SaldoTotalUnidad.ToString("C")</strong> ·
+                    Clasificación de la unidad después del pago:
+                    <span class="@Formato.ClaseClasificacion(d.ClasificacionAntes)">@Formato.Texto(d.ClasificacionAntes)</span>
+                    <i class="bi bi-arrow-right"></i>
+                    <span class="@Formato.ClaseClasificacion(d.ClasificacionDespues)">@Formato.Texto(d.ClasificacionDespues)</span>
+                </div>
+            }
+
+            <form asp-action="Rechazar" asp-route-id="@Model.Pago.Id" method="post" id="form-rechazo">
+                <label asp-for="Observacion" class="form-label"></label>
+                <textarea asp-for="Observacion" class="form-control" rows="2" placeholder="Escriba el motivo…"></textarea>
+                <span asp-validation-for="Observacion" class="text-danger small"></span>
+            </form>
+
+            <div class="d-flex flex-wrap justify-content-end gap-2 mt-3">
+                <a asp-action="Index" asp-route-estado="PorVerificar" class="btn btn-outline-secondary">Cancelar</a>
+                <button type="submit" form="form-rechazo" class="btn btn-outline-danger">Rechazar pago</button>
+                <form asp-action="Verificar" asp-route-id="@Model.Pago.Id" method="post" class="m-0">
+                    <button type="submit" class="btn btn-primary" disabled="@(!puedeVerificar)"><i class="bi bi-check2"></i> Verificar y aplicar</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

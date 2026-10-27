@@ -1,0 +1,76 @@
+@model PagoFormViewModel
+<div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+<input type="hidden" asp-for="Id" />
+
+<div class="row g-3">
+    @* ----- Dropdowns en cascada: Torre → Unidad → Residente ----- *@
+    <div class="col-sm-4">
+        <label asp-for="Torre" class="form-label"></label>
+        <select asp-for="Torre" asp-items="Model.Torres" class="form-select"
+                data-cascada-destino="#UnidadId"
+                data-cascada-url="@Url.Action("Unidades", "Catalogos")?torre=">
+            <option value="">Seleccione…</option>
+        </select>
+        <span asp-validation-for="Torre" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-4">
+        <label asp-for="UnidadId" class="form-label"></label>
+        <select asp-for="UnidadId" asp-items="Model.Unidades" class="form-select"
+                data-vacio="Seleccione…" data-valor-vacio="0" data-sin-datos="La torre no tiene unidades"
+                data-cascada-destino="#ResidenteId"
+                data-cascada-url="@Url.Action("Residentes", "Catalogos")?unidadId=">
+            <option value="0">@(Model.Unidades.Any() ? "Seleccione…" : "Primero elija la torre")</option>
+        </select>
+        <span asp-validation-for="UnidadId" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-4">
+        <label asp-for="ResidenteId" class="form-label"></label>
+        <select asp-for="ResidenteId" asp-items="Model.Residentes" class="form-select"
+                data-vacio="(sin especificar)" data-sin-datos="La unidad no tiene residentes" data-auto-responsable>
+            <option value="">(sin especificar)</option>
+        </select>
+        <span asp-validation-for="ResidenteId" class="text-danger small"></span>
+    </div>
+
+    <div class="col-12">
+        <div class="aviso-regla">
+            Saldo total de la unidad a la fecha del pago:
+            <span id="saldo-unidad" class="saldo-unidad" data-url="@Url.Action("SaldoUnidad", "Catalogos")">—</span>
+            <span class="texto-pequeno">· el pago no puede superar este valor (se valida en el servidor).</span>
+        </div>
+    </div>
+
+    <div class="col-sm-4">
+        <label asp-for="FechaPago" class="form-label"></label>
+        <input asp-for="FechaPago" class="form-control" type="date" />
+        <span asp-validation-for="FechaPago" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-4">
+        <label asp-for="Monto" class="form-label"></label>
+        <div class="input-group">
+            <span class="input-group-text">$</span>
+            <input asp-for="Monto" class="form-control" type="number" step="0.01" min="0.01" />
+        </div>
+        <span asp-validation-for="Monto" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-4">
+        <label asp-for="Metodo" class="form-label"></label>
+        <select asp-for="Metodo" asp-items="Html.GetEnumSelectList<MetodoPago>()" class="form-select"></select>
+        <span asp-validation-for="Metodo" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Referencia" class="form-label"></label>
+        <input asp-for="Referencia" class="form-control text-uppercase" placeholder="TRX-771045" autocomplete="off" />
+        <div id="ayuda-referencia" class="form-text">Obligatoria: número de la transferencia o del depósito.</div>
+        <span asp-validation-for="Referencia" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Archivo" class="form-label"></label>
+        <input asp-for="Archivo" class="form-control" type="file" accept=".jpg,.jpeg,.png,.pdf" />
+        @if (!string.IsNullOrEmpty(Model.ComprobanteActual))
+        {
+            <div class="form-text">Actual: <a asp-action="Comprobante" asp-route-id="@Model.Id" target="_blank">ver comprobante</a>. Suba otro solo si desea reemplazarlo.</div>
+        }
+        <span asp-validation-for="Archivo" class="text-danger small"></span>
+    </div>
+</div>

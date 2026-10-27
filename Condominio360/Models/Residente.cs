@@ -11,6 +11,7 @@ public enum TipoResidente
 
 /// <summary>
 /// Persona que vive o es dueña de una unidad del condominio.
+/// La cédula se valida en el servidor con el algoritmo del Registro Civil (módulo 10).
 /// </summary>
 public class Residente
 {
@@ -34,7 +35,7 @@ public class Residente
     [StringLength(100)]
     public string Correo { get; set; } = string.Empty;
 
-    [RegularExpression(@"^\+?\d{7,15}$", ErrorMessage = "Ingrese solo dígitos (7 a 15), opcionalmente con +.")]
+    [RegularExpression(@"^\+?\d{7,14}$", ErrorMessage = "Ingrese solo dígitos (7 a 14), opcionalmente con +.")]
     [Display(Name = "Teléfono")]
     public string? Telefono { get; set; }
 
@@ -46,11 +47,17 @@ public class Residente
     [Display(Name = "Fecha de ingreso")]
     public DateTime FechaIngreso { get; set; } = DateTime.Today;
 
+    [Display(Name = "Responsable de pago de la unidad")]
+    public bool ResponsablePago { get; set; }
+
     [Range(1, int.MaxValue, ErrorMessage = "Seleccione una unidad.")]
     [Display(Name = "Unidad")]
     public int UnidadId { get; set; }
 
     public Unidad? Unidad { get; set; }
+
+    /// <summary>Cuenta de usuario vinculada (rol Residente), si existe.</summary>
+    public Usuario? Usuario { get; set; }
 
     [NotMapped]
     public string NombreCompleto => $"{Nombres} {Apellidos}";
