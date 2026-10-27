@@ -1,13 +1,14 @@
 <h1 align="center">🏢 Condominio360</h1>
 
 <p align="center">
-  Aplicación web para la administración de un condominio: registro de unidades y residentes con acceso protegido por inicio de sesión.
+  Aplicación web para la administración de un condominio: unidades, residentes y <b>cobranza de alícuotas con recargo por mora y clasificación de morosidad</b> (Core).
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/.NET-10.0-512BD4?logo=dotnet" alt=".NET 10">
   <img src="https://img.shields.io/badge/ASP.NET%20Core-MVC-512BD4" alt="ASP.NET Core MVC">
-  <img src="https://img.shields.io/badge/EF%20Core-SQLite-003B57?logo=sqlite" alt="EF Core + SQLite">
+  <img src="https://img.shields.io/badge/EF%20Core-PostgreSQL-336791?logo=postgresql" alt="EF Core + PostgreSQL">
+  <img src="https://img.shields.io/badge/BDD-Supabase-3ECF8E?logo=supabase" alt="Supabase">
   <img src="https://img.shields.io/badge/Bootstrap-5.3-7952B3?logo=bootstrap" alt="Bootstrap 5.3">
   <img src="https://img.shields.io/badge/estado-en%20desarrollo-yellow" alt="Estado: en desarrollo">
 </p>
@@ -18,13 +19,17 @@
 
 - [Descripción del proyecto](#-descripción-del-proyecto)
 - [Estado del proyecto](#-estado-del-proyecto)
+- [El Core: cobranza de alícuotas](#-el-core-cobranza-de-alícuotas)
 - [Funcionalidades](#-funcionalidades)
-- [Tecnologías utilizadas](#-tecnologías-utilizadas)
+- [Base de datos (Supabase)](#️-base-de-datos-supabase)
+- [Validaciones en back-end](#-validaciones-en-back-end)
+- [Dropdowns en cascada](#-dropdowns-en-cascada)
+- [Tecnologías utilizadas](#️-tecnologías-utilizadas)
 - [Acceso al proyecto y ejecución](#-acceso-al-proyecto-y-ejecución)
 - [Credenciales de prueba](#-credenciales-de-prueba)
 - [Arquitectura MVC](#-arquitectura-mvc)
-- [Seguridad y autenticación](#-seguridad-y-autenticación)
-- [Rutas de la aplicación](#-rutas-de-la-aplicación)
+- [Seguridad](#-seguridad)
+- [Rutas de la aplicación](#️-rutas-de-la-aplicación)
 - [Autores](#-autores)
 - [Licencia](#-licencia)
 
@@ -32,32 +37,126 @@
 
 ## 📝 Descripción del proyecto
 
-**Condominio360** resuelve un problema frecuente en conjuntos residenciales: la información de quién vive en cada departamento y cuánto paga de alícuota suele estar dispersa en hojas de cálculo o cuadernos. La aplicación centraliza esos datos y restringe su acceso al personal de administración.
+**Condominio360** centraliza la información de un conjunto residencial que suele llevarse en hojas de cálculo o cuadernos: unidades, residentes, cobro de alícuotas, reservas de áreas comunales y control de visitas.
 
-Proyecto desarrollado para la materia **Ingeniería Web** (Universidad de las Américas – UDLA), aplicando el patrón **Modelo–Vista–Controlador (MVC)** con **ASP.NET Core**.
+Proyecto de la materia **Ingeniería Web** (Universidad de las Américas – UDLA), con el patrón **Modelo–Vista–Controlador (MVC)** en **ASP.NET Core**.
 
 ## 🚧 Estado del proyecto
 
-**Entrega 1 – CRUD y Login con MVC:** completada ✅
+| Entrega | Contenido | Estado |
+|---|---|---|
+| 1 | CRUD + Login con MVC | ✅ |
+| 2 | Documento de especificación funcional (Core, alcance, diagramas) | ✅ |
+| **3** | **Administración MVC del Core sobre base de datos real (Supabase)** | ✅ |
 
-| Requisito | Estado |
+Requisitos de la entrega 3:
+
+| Requisito | Dónde se cumple |
 |---|---|
-| Aplicación MVC con CRUD (Crear, Leer, Actualizar, Eliminar) | ✅ |
-| Login con usuario y contraseña | ✅ |
-| URLs protegidas inaccesibles sin autenticación | ✅ |
+| Tablas del Diagrama Entidad-Relación en una BDD real | [`database/01_esquema.sql`](database/01_esquema.sql) → 11 tablas en PostgreSQL (Supabase) |
+| Administración MVC basada en el Core | Módulo **Cobranza**: configuración, cuotas, pagos, estado de cuenta, reporte de morosidad |
+| ≥ 1 validación en back-end de un dato sensible del Core | Monto del pago vs. saldo de la unidad, referencia bancaria única, cédula (módulo 10) — ver [Validaciones](#-validaciones-en-back-end) |
+| Claves foráneas con dropdown (no input simple) y en cascada | Torre → Unidad → Residente en pagos; Torre → Unidad en residentes y estado de cuenta |
 
+## 💰 El Core: cobranza de alícuotas
+
+Cada mes el condominio emite una cuota por unidad activa (su alícuota). Los pagos se verifican y se **distribuyen automáticamente desde la cuota más antigua, primero al recargo y luego al capital**. Con el resultado, cada unidad se clasifica según su morosidad.
+
+Parámetros editables (configuración de cobro): día de vencimiento **D**, días de gracia **G**, tasa de recargo mensual **t**.
+
+```
+Fecha límite       = Fecha de vencimiento + G días
+Días de atraso     = máx(0, F − Fecha límite)              F = fecha de corte
+Meses de atraso    = ⌈ Días de atraso / 30 ⌉
+Capital pendiente  = Monto − Capital pagado
+Recargo            = Capital pendiente × t × Meses de atraso   (2 decimales)
+Saldo              = Capital pendiente + máx(0, Recargo − Recargo pagado)
+
+Clasificación (n = cuotas vencidas con saldo):
+  n = 0 Al día · n = 1 Atraso leve · n = 2 o 3 Moroso · n ≥ 4 Moroso crítico
+
+Índice de morosidad = Unidades con n ≥ 1 / Unidades activas × 100
+Tasa de recaudación = Cobrado del periodo / Emitido del periodo × 100
+Cartera vencida     = Σ Saldo de las cuotas vencidas
+```
+
+Las reglas están en el **Modelo** (`Models/Cuota.cs`) y en el servicio del Core (`Services/CobranzaService.cs`); los controladores solo orquestan.
 
 ## ✨ Funcionalidades
 
-- 🔐 **Inicio y cierre de sesión** con usuario y contraseña (cookie de autenticación).
-- 🛡️ **Protección de rutas:** toda URL requiere sesión salvo el inicio y el login.
-- ↩️ **Retorno automático:** tras iniciar sesión, el usuario vuelve a la página que intentó abrir.
-- 🏠 **CRUD de Unidades:** torre, número, piso, tipo, área y alícuota mensual.
-- 👥 **CRUD de Residentes:** datos personales, tipo (propietario/arrendatario) y unidad asignada.
-- 🔎 **Búsqueda de residentes** por nombre, apellido o cédula.
-- 📊 **Panel** con total de unidades, ocupación, residentes y alícuotas del mes.
-- ✅ **Validaciones** en cliente y servidor (cédula de 10 dígitos, correo, rangos, duplicados).
-- 🔗 **Integridad:** no se puede eliminar una unidad que tiene residentes.
+**Administración del Core (rol Administrador)**
+
+- ⚙️ **Configuración de cobro** con historial de versiones (*vigente desde*).
+- 📅 **Generar cuotas del periodo** con resumen previo: unidades activas, ya generadas, total a emitir por tipo. No duplica cuotas (restricción única unidad–año–mes).
+- 🧾 **Cuotas**: listado por periodo / torre / estado con meses de atraso, recargo y saldo a hoy; detalle con pagos aplicados; anulación (solo sin abonos); recálculo de estados.
+- 💵 **Pagos**: registrar pago recibido en administración (se aplica al instante), editar o eliminar pagos *por verificar*, **verificar con vista previa de la distribución** y del cambio de clasificación, **rechazar con motivo obligatorio**, comprobante protegido.
+- 📄 **Estado de cuenta** de una unidad a una fecha de corte: saldo total, saldo vencido, recargos, clasificación, cuotas e historial de pagos con su distribución.
+- 📉 **Reporte de morosidad** con indicadores (índice de morosidad, cartera vencida, tasa de recaudación, unidades al día), filtros por fecha de corte, torre, clasificación y búsqueda; **exportación CSV**.
+
+**Gestión base**
+
+- 🔐 Login con roles (Administrador, Residente, Guardia) y usuarios activos/inactivos.
+- 🏠 CRUD de unidades (con estado activa/inactiva) y 👥 CRUD de residentes (con responsable de pago).
+- 📊 Panel con indicadores del condominio y de la cobranza.
+
+## 🗄️ Base de datos (Supabase)
+
+PostgreSQL 17 en **Supabase** (proyecto `Condominio360`, región `us-east-1`). Las tablas replican el Diagrama Entidad-Relación del documento de especificación:
+
+| Tabla | Descripción | Relaciones |
+|---|---|---|
+| `roles` | Administrador, Residente, Guardia | — |
+| `usuarios` | Cuentas de acceso (hash PBKDF2) | `rol_id` → roles, `residente_id` → residentes (1:1) |
+| `unidades` | Torre, número, piso, tipo, área, alícuota, activa | — |
+| `residentes` | Datos personales, responsable de pago | `unidad_id` → unidades |
+| `configuracion_cobro` | D, G, t y vigencia | `actualizado_por` → usuarios |
+| `cuotas` | Cuota mensual por unidad | `unidad_id` → unidades, `generada_por` → usuarios |
+| `pagos` | Pagos con estado de verificación | `unidad_id`, `residente_id`, `registrado_por`, `verificado_por` |
+| `aplicaciones_pago` | Distribución de un pago entre cuotas | `pago_id` → pagos, `cuota_id` → cuotas |
+| `areas_comunales` | Salón, BBQ, gimnasio… | — |
+| `reservas` | Reservas de áreas | `area_id`, `residente_id`, `aprobada_por` |
+| `visitas` | Visitas autorizadas | `unidad_id`, `autorizada_por`, `registrada_por` |
+
+Scripts en la carpeta [`database/`](database):
+
+| Script | Contenido |
+|---|---|
+| `01_esquema.sql` | Tablas, claves primarias/foráneas, `UNIQUE`, `CHECK` de dominios (estados, métodos, rangos) e índices |
+| `02_seguridad.sql` | RLS activo en todas las tablas (la API pública de Supabase no expone datos) y rol `condominio_app` de mínimo privilegio para la aplicación |
+| `03_datos_ejemplo.sql` | 14 unidades, 15 residentes, 4 usuarios, cuotas de julio a octubre de 2026 y 38 pagos coherentes con el algoritmo del Core |
+
+Reglas que también protege la base de datos (defensa en profundidad): una cuota por unidad y periodo, un responsable de pago por unidad, referencia bancaria única entre pagos no rechazados, `capital_pagado ≤ monto`, rechazo con observación obligatoria, transferencia/depósito con referencia obligatoria.
+
+> La aplicación **no crea tablas**: el esquema se administra con estos scripts.
+
+## 🛡️ Validaciones en back-end
+
+El dato sensible del Core es **el dinero**. Estas reglas se ejecutan en el servidor (`PagosController.ValidarAsync` y `CobranzaService`) **antes de grabar**, aunque el navegador tenga JavaScript desactivado o se manipule el formulario:
+
+| # | Validación | Archivo |
+|---|---|---|
+| 1 | El **monto no puede superar el saldo total de la unidad** a la fecha del pago (calculado en el servidor con recargos); máximo 2 decimales; mayor que 0 | `Controllers/PagosController.cs`, `Services/CobranzaService.cs` |
+| 2 | **Referencia bancaria** obligatoria para transferencia/depósito, formato `A-Z 0-9 -` y **sin duplicados** (evita registrar dos veces la misma transferencia) | `Controllers/PagosController.cs` |
+| 3 | La unidad existe y pertenece a la torre; el residente que paga pertenece a esa unidad (no se confía en el valor del dropdown) | `Controllers/PagosController.cs` |
+| 4 | Fecha de pago no futura ni con más de un año | `Controllers/PagosController.cs` |
+| 5 | Comprobante: solo JPG/PNG/PDF ≤ 2 MB, verificando la **firma del archivo** (magic bytes) | `Controllers/PagosController.cs` |
+| 6 | Rechazo con motivo obligatorio; solo se verifican/rechazan pagos *por verificar* | `Services/CobranzaService.cs` |
+| 7 | **Cédula ecuatoriana** validada con el algoritmo **módulo 10** del Registro Civil (provincia, tercer dígito y dígito verificador) | `Services/ValidadorCedula.cs` |
+
+Ejemplo para probar: en *Pagos → Registrar pago*, elegir **Torre A → A-301** (saldo ≈ $456) e ingresar **$1000**: el servidor rechaza el pago y no se guarda nada.
+
+## 🔗 Dropdowns en cascada
+
+Ninguna clave foránea se escribe a mano. Al elegir la torre se cargan **solo sus unidades**, y al elegir la unidad se cargan **solo sus residentes** (preseleccionando al responsable de pago):
+
+```
+Torre / bloque  ──►  Unidad  ──►  Residente que paga
+   [ A ▾ ]          [ A-202 ▾ ]     [ Carlos Mena Vaca · responsable ▾ ]
+```
+
+- Endpoints JSON: `GET /Catalogos/Unidades?torre=A`, `GET /Catalogos/Residentes?unidadId=4`, `GET /Catalogos/SaldoUnidad?unidadId=4`.
+- Script genérico: `wwwroot/js/cascada.js` (atributos `data-cascada-destino` y `data-cascada-url`).
+- Usado en: registro/edición de pagos, registro/edición de residentes y estado de cuenta.
 
 ## 🛠️ Tecnologías utilizadas
 
@@ -65,11 +164,11 @@ Proyecto desarrollado para la materia **Ingeniería Web** (Universidad de las Am
 |---|---|
 | Framework | ASP.NET Core 10 MVC |
 | Lenguaje | C# 14 |
-| Acceso a datos | Entity Framework Core 10 |
-| Base de datos | SQLite (archivo local, sin instalación) |
-| Autenticación | Cookie Authentication + `PasswordHasher` (PBKDF2) |
+| Acceso a datos | Entity Framework Core 10 + Npgsql |
+| Base de datos | PostgreSQL 17 en **Supabase** |
+| Autenticación | Cookie Authentication + `PasswordHasher` (PBKDF2) + roles |
 | Interfaz | Razor Views, Bootstrap 5.3, Bootstrap Icons |
-| Validación cliente | jQuery Validation Unobtrusive |
+| Validación cliente | jQuery Validation Unobtrusive (el servidor siempre vuelve a validar) |
 
 ## 🚀 Acceso al proyecto y ejecución
 
@@ -77,112 +176,112 @@ Proyecto desarrollado para la materia **Ingeniería Web** (Universidad de las Am
 
 - [.NET SDK 10.0](https://dotnet.microsoft.com/download/dotnet/10.0)
 - Git
-- (Opcional) Visual Studio 2022 o Visual Studio Code con C# Dev Kit
+- Acceso a la base de datos de Supabase (cadena de conexión)
 
 ### Pasos
 
 ```bash
 # 1. Clonar el repositorio
-git clone https://github.com/USUARIO/Condominio360.git
+git clone https://github.com/BrunoMorenoDev/Condominio360.git
 cd Condominio360
 
-# 2. Restaurar paquetes
-dotnet restore
+# 2. Configurar la cadena de conexión (NO se sube a Git)
+cp Condominio360/appsettings.Local.example.json Condominio360/appsettings.Local.json
+#    → reemplazar <CONTRASENA> por la contraseña del rol condominio_app
 
-# 3. Ejecutar
+# 3. Restaurar y ejecutar
+dotnet restore
 dotnet run --project Condominio360
 ```
 
-Abrir en el navegador: **http://localhost:5080**
+Abrir **http://localhost:5080**
 
-> La base de datos `condominio360.db` se crea automáticamente en el primer arranque, junto con el usuario administrador y datos de ejemplo. Para reiniciar los datos basta con borrar ese archivo.
+### Crear la base de datos desde cero (opcional)
 
-**Con Visual Studio:** abrir `Condominio360.sln` y presionar **F5**.
-
-**Con HTTPS** (opcional):
-
-```bash
-dotnet dev-certs https --trust
-dotnet run --project Condominio360 --launch-profile https
-```
+En Supabase → *SQL Editor* ejecutar, en orden: `database/01_esquema.sql`, `database/02_seguridad.sql` (cambiando `<CONTRASENA_SEGURA>`) y `database/03_datos_ejemplo.sql`.
 
 ## 🔑 Credenciales de prueba
 
-| Usuario | Contraseña |
-|---|---|
-| `admin` | `Admin123*` |
+| Usuario | Contraseña | Rol |
+|---|---|---|
+| `admin` | `Admin123*` | Administrador (acceso completo al Core) |
+| `cmena` | `Residente123*` | Residente (módulo en la siguiente entrega) |
+| `atorres` | `Residente123*` | Residente |
+| `guardia` | `Guardia123*` | Guardia |
 
-Se configuran en `appsettings.json` (sección `AdminSeed`) y solo se usan cuando la base de datos no tiene usuarios. La contraseña se guarda **hasheada**, nunca en texto plano.
+Las contraseñas se guardan **hasheadas** (PBKDF2), nunca en texto plano.
 
 ## 🧱 Arquitectura MVC
 
 ```
 Condominio360/
-├── Condominio360.sln
-├── README.md
+├── database/                         # Scripts SQL del diagrama ER (Supabase)
+│   ├── 01_esquema.sql
+│   ├── 02_seguridad.sql
+│   └── 03_datos_ejemplo.sql
 └── Condominio360/
-    ├── Program.cs                 # Configuración: MVC, EF Core, autenticación y autorización
-    ├── appsettings.json           # Cadena de conexión y usuario inicial
-    ├── Models/                    # MODELO: entidades y reglas de validación
-    │   ├── Unidad.cs
-    │   ├── Residente.cs
-    │   └── Usuario.cs
-    ├── ViewModels/                # Modelos exclusivos de las vistas (login, panel)
+    ├── Program.cs                    # MVC, EF Core + Npgsql, autenticación, autorización
+    ├── appsettings.json              # Configuración sin secretos
+    ├── appsettings.Local.example.json# Plantilla de la cadena de conexión
+    ├── Models/                       # MODELO: entidades del diagrama ER y reglas de cálculo
+    │   ├── Unidad.cs  Residente.cs  Usuario.cs  Rol.cs
+    │   ├── ConfiguracionCobro.cs  Cuota.cs  Pago.cs  AplicacionPago.cs
+    │   ├── AreaComunal.cs (+ Reserva, Visita)
+    │   └── Enums.cs                  # EstadoCuota, EstadoPago, MetodoPago, ClasificacionMorosidad…
+    ├── Services/
+    │   ├── CobranzaService.cs        # Core: generar cuotas, saldo, distribución, morosidad, indicadores
+    │   └── ValidadorCedula.cs        # Cédula ecuatoriana (módulo 10)
     ├── Data/
-    │   ├── AppDbContext.cs        # Mapeo a la base de datos (índices únicos, relaciones)
-    │   └── DbSeeder.cs            # Usuario admin y datos de ejemplo
-    ├── Controllers/               # CONTROLADOR: recibe la petición y decide la respuesta
-    │   ├── HomeController.cs      # Público
-    │   ├── AccountController.cs   # Login / Logout (público)
-    │   ├── PanelController.cs     # Protegido
-    │   ├── UnidadesController.cs  # CRUD protegido
-    │   └── ResidentesController.cs# CRUD protegido
-    ├── Views/                     # VISTA: plantillas Razor (.cshtml)
-    │   ├── Shared/                # Layout, alertas, validación
-    │   ├── Account/  Home/  Panel/
-    │   ├── Unidades/              # Index, Details, Create, Edit, Delete
-    │   └── Residentes/            # Index, Details, Create, Edit, Delete
-    └── wwwroot/css/site.css
+    │   ├── AppDbContext.cs           # Mapeo a tablas snake_case de PostgreSQL
+    │   └── DbSeeder.cs               # Roles, admin y configuración mínima
+    ├── ViewModels/                   # Modelos de las vistas (formularios, reportes)
+    ├── Helpers/                      # Formato de periodos, estados y claims
+    ├── Controllers/                  # CONTROLADOR
+    │   ├── AccountController.cs  PanelController.cs  HomeController.cs
+    │   ├── UnidadesController.cs  ResidentesController.cs
+    │   ├── ConfiguracionCobroController.cs  CuotasController.cs  PagosController.cs
+    │   ├── EstadoCuentaController.cs  MorosidadController.cs
+    │   └── CatalogosController.cs    # JSON para los dropdowns en cascada
+    ├── Views/                        # VISTA: Razor (.cshtml)
+    └── wwwroot/  (css/site.css, js/cascada.js, js/pago-form.js)
 ```
 
-**Flujo de una petición:** el navegador pide `/Unidades` → el middleware de autenticación lee la cookie → el middleware de autorización verifica la sesión → `UnidadesController.Index()` consulta el **Modelo** mediante `AppDbContext` → devuelve la **Vista** `Views/Unidades/Index.cshtml` con los datos.
+**Flujo de verificación de un pago:** `GET /Pagos/Verificar/37` → `PagosController` pide a `CobranzaService` la vista previa → el servicio usa las reglas de `Cuota` (recargo, saldo, estado) → la **Vista** muestra la distribución y el cambio de clasificación → `POST` aplica el pago: crea las `aplicaciones_pago`, actualiza las cuotas y marca el pago como verificado en una sola transacción.
 
-**Modelo de datos:** una `Unidad` tiene muchos `Residente` (relación 1:N, eliminación restringida).
-
-## 🔒 Seguridad y autenticación
+## 🔒 Seguridad
 
 | Medida | Implementación |
 |---|---|
-| Rutas protegidas por defecto | `FallbackPolicy` en `Program.cs`: toda URL exige usuario autenticado. Solo `HomeController` y `AccountController` tienen `[AllowAnonymous]`. |
-| Defensa en profundidad | Los controladores privados además llevan `[Authorize]`. |
-| Redirección al login | Sin sesión, cualquier URL privada responde `302` a `/Account/Login?ReturnUrl=...`. |
-| Contraseñas | Hash PBKDF2 con `PasswordHasher<Usuario>` de ASP.NET Core Identity. |
-| Cookie de sesión | `HttpOnly`, `SameSite=Lax`, expira en 30 min con renovación por actividad. |
-| CSRF | `[ValidateAntiForgeryToken]` en todos los formularios POST (incluido el logout). |
-| Open redirect | `Url.IsLocalUrl()` antes de redirigir al `ReturnUrl`. |
-| Caché tras logout | `ResponseCache(NoStore = true)` en páginas privadas: el botón "Atrás" no muestra datos después de cerrar sesión. |
-| Mensajes de error | Mensaje genérico "Usuario o contraseña incorrectos" para no revelar si el usuario existe. |
-| Overposting | `[Bind]` con lista explícita de campos en Create/Edit. |
+| Rutas protegidas por defecto | `FallbackPolicy`: toda URL exige sesión salvo `Home` y `Account` |
+| Autorización por rol | Módulos de administración con `[Authorize(Roles = "Administrador")]` |
+| Contraseñas | Hash PBKDF2 (`PasswordHasher<Usuario>`); usuarios inactivos no inician sesión |
+| Secretos fuera de Git | Cadena de conexión en `appsettings.Local.json` (en `.gitignore`) |
+| Base de datos | RLS activo; la app usa el rol `condominio_app` (solo DML, sin DDL) |
+| CSRF | `[ValidateAntiForgeryToken]` en todos los POST |
+| Overposting | `[Bind]` / ViewModels con campos explícitos |
+| Comprobantes | Guardados fuera de `wwwroot`; solo se descargan con sesión de administrador |
+| CSV | Neutraliza fórmulas (`=`, `+`, `-`, `@`) al exportar |
 
 ## 🗺️ Rutas de la aplicación
 
 | Ruta | Acceso | Descripción |
 |---|---|---|
-| `/` | Público | Página de inicio |
-| `/Account/Login` | Público | Formulario de inicio de sesión |
-| `/Account/Logout` (POST) | Público | Cierra la sesión |
-| `/Panel` | 🔒 Privado | Resumen del condominio |
-| `/Unidades` | 🔒 Privado | Listado de unidades |
-| `/Unidades/Create` · `/Edit/{id}` · `/Details/{id}` · `/Delete/{id}` | 🔒 Privado | CRUD de unidades |
-| `/Residentes` | 🔒 Privado | Listado y búsqueda de residentes |
-| `/Residentes/Create` · `/Edit/{id}` · `/Details/{id}` · `/Delete/{id}` | 🔒 Privado | CRUD de residentes |
+| `/` · `/Account/Login` | Público | Inicio y login |
+| `/Panel` | 🔒 Sesión | Indicadores |
+| `/Unidades` · `/Residentes` | 🔒 Admin | CRUD |
+| `/ConfiguracionCobro` | 🔒 Admin | Parámetros D, G, t e historial |
+| `/Cuotas` · `/Cuotas/Generar` · `/Cuotas/Details/{id}` | 🔒 Admin | Cuotas por periodo |
+| `/Pagos` · `/Pagos/Create` · `/Pagos/Verificar/{id}` | 🔒 Admin | Registro, verificación y rechazo de pagos |
+| `/EstadoCuenta?unidadId={id}&corte=AAAA-MM-DD` | 🔒 Admin | Estado de cuenta de una unidad |
+| `/Morosidad` · `/Morosidad/Exportar` | 🔒 Admin | Reporte de morosidad y CSV |
+| `/Catalogos/Unidades` · `/Catalogos/Residentes` · `/Catalogos/SaldoUnidad` | 🔒 Admin | JSON para dropdowns en cascada |
 
 ## 👨‍💻 Autores
 
 | Nombre | GitHub |
 |---|---|
-| Jose Freire| [@JoseFreire29](https://github.com/JoseFreire29) |
-| Bruno Moreno| [@BrunoMorenoDev](https://github.com/BrunoMorenoDev) |
+| Jose Freire | [@JoseFreire29](https://github.com/JoseFreire29) |
+| Bruno Moreno | [@BrunoMorenoDev](https://github.com/BrunoMorenoDev) |
 
 Materia: Ingeniería Web · Facultad de Ingeniería y Ciencias Aplicadas (FICA) · UDLA
 
