@@ -1,0 +1,49 @@
+@model ConfiguracionCobroFormViewModel
+@{
+    ViewData["Title"] = "Nueva configuración de cobro";
+}
+<div class="migas"><a asp-action="Index">Configuración de cobro</a> › Nueva</div>
+<h1 class="h3 mb-3">Nueva configuración de cobro</h1>
+
+<div class="tarjeta-form">
+    <p class="texto-pequeno">
+        Los cambios no modifican las cuotas ya emitidas: se aplican a partir de la fecha "vigente desde"
+        (el día de vencimiento, a las cuotas que se generen después; la tasa y los días de gracia, a los cálculos de mora desde esa fecha).
+    </p>
+    <form asp-action="Create" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+        <div class="row g-3">
+            <div class="col-sm-6">
+                <label asp-for="DiaVencimiento" class="form-label"></label>
+                <input asp-for="DiaVencimiento" class="form-control" type="number" min="1" max="28" />
+                <span asp-validation-for="DiaVencimiento" class="text-danger small"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="DiasGracia" class="form-label"></label>
+                <input asp-for="DiasGracia" class="form-control" type="number" min="0" max="30" />
+                <span asp-validation-for="DiasGracia" class="text-danger small"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="TasaPorcentaje" class="form-label"></label>
+                <div class="input-group">
+                    <input asp-for="TasaPorcentaje" class="form-control" type="number" step="0.01" min="0" max="10" />
+                    <span class="input-group-text">%</span>
+                </div>
+                <span asp-validation-for="TasaPorcentaje" class="text-danger small"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="VigenteDesde" class="form-label"></label>
+                <input asp-for="VigenteDesde" class="form-control" type="date" />
+                <span asp-validation-for="VigenteDesde" class="text-danger small"></span>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">Guardar configuración</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}
