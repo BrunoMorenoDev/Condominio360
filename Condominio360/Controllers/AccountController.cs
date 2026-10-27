@@ -46,15 +46,16 @@ public class AccountController : Controller
 
         var nombre = model.NombreUsuario.Trim().ToLowerInvariant();
         var usuario = await _db.Usuarios.AsNoTracking()
+            .Include(u => u.Rol)
             .FirstOrDefaultAsync(u => u.NombreUsuario == nombre);
 
-        var credencialesValidas = usuario is not null &&
+        var credencialesValidas = usuario is not null && usuario.Activo &&
             _hasher.VerifyHashedPassword(usuario, usuario.PasswordHash, model.Password)
                 != PasswordVerificationResult.Failed;
 
         if (!credencialesValidas)
         {
-            // Mensaje genérico: no revela si el usuario existe
+            // Mensaje genérico: no revela si el usuario existe o está desactivado
             _logger.LogWarning("Intento de inicio de sesión fallido para '{Usuario}'", nombre);
             ModelState.AddModelError(string.Empty, "Usuario o contraseña incorrectos.");
             model.Password = string.Empty;
@@ -66,8 +67,10 @@ public class AccountController : Controller
             new(ClaimTypes.NameIdentifier, usuario!.Id.ToString()),
             new(ClaimTypes.Name, usuario.NombreUsuario),
             new("NombreCompleto", usuario.NombreCompleto),
-            new(ClaimTypes.Role, usuario.Rol)
+            new(ClaimTypes.Role, usuario.Rol?.Nombre ?? string.Empty)
         };
+        if (usuario.ResidenteId is int residenteId)
+            claims.Add(new Claim("ResidenteId", residenteId.ToString()));
 
         var identidad = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
 
@@ -80,7 +83,7 @@ public class AccountController : Controller
                 ExpiresUtc = model.Recordarme ? DateTimeOffset.UtcNow.AddDays(7) : null
             });
 
-        _logger.LogInformation("Usuario '{Usuario}' inició sesión", usuario.NombreUsuario);
+        _logger.LogInformation("Usuario '{Usuario}' ({Rol}) inició sesión", usuario.NombreUsuario, usuario.Rol?.Nombre);
 
         // Solo se redirige a URLs internas (evita "open redirect")
         if (!string.IsNullOrEmpty(model.ReturnUrl) && Url.IsLocalUrl(model.ReturnUrl))

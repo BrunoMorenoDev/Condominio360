@@ -1,0 +1,14 @@
+@{
+    ViewData["Title"] = "Inicio";
+    var nombre = ViewData["Nombre"] as string;
+    var rol = User.FindFirst(ClaimTypes.Role)?.Value;
+}
+<partial name="_Alertas" />
+<div class="text-center py-5">
+    <i class="bi bi-tools display-5 text-secondary"></i>
+    <h1 class="h3 mt-3">Hola, @nombre</h1>
+    <p class="text-secondary mb-0">
+        Iniciaste sesión con el rol <strong>@rol</strong>. Las funciones de este rol
+        (estado de cuenta propio, reporte de pagos, reservas y control de visitas) se habilitan en la siguiente entrega.
+    </p>
+</div>
