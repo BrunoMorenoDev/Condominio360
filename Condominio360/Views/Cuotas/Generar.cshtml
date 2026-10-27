@@ -1,0 +1,105 @@
+@model GenerarCuotasViewModel
+@{
+    ViewData["Title"] = "Generar cuotas del periodo";
+    var cfg = Model.Configuracion;
+    var anioActual = DateTime.Today.Year;
+}
+<div class="migas"><a asp-action="Index">Cuotas</a> › Generar</div>
+<h1 class="h3 mb-1">Generar cuotas del periodo</h1>
+<p class="text-secondary">Crea una cuota por cada unidad activa con el valor de su alícuota. Las unidades que ya tienen cuota del periodo se omiten.</p>
+
+<partial name="_Alertas" />
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="seccion">
+            <h2>Periodo</h2>
+            <form asp-action="Generar" method="get" class="row g-2 align-items-end mb-3">
+                <div class="col-6">
+                    <label class="form-label" for="mes">Mes</label>
+                    <select id="mes" name="mes" class="form-select">
+                        @for (var m = 1; m <= 12; m++)
+                        {
+                            <option value="@m" selected="@(Model.Mes == m)">@Formato.NombreMes(m)</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-4">
+                    <label class="form-label" for="anio">Año</label>
+                    <select id="anio" name="anio" class="form-select">
+                        @for (var a = anioActual - 1; a <= anioActual + 1; a++)
+                        {
+                            <option value="@a" selected="@(Model.Anio == a)">@a</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-2">
+                    <button type="submit" class="btn btn-outline-primary w-100" title="Ver resumen"><i class="bi bi-search"></i><span class="visually-hidden">Ver resumen</span></button>
+                </div>
+            </form>
+
+            <h2>Parámetros de cobro vigentes</h2>
+            @if (cfg is null)
+            {
+                <p class="text-danger mb-0">No hay configuración de cobro.</p>
+            }
+            else
+            {
+                <table class="table table-sm mb-2">
+                    <tr><td>Día de vencimiento</td><td class="text-end fw-bold">@cfg.DiaVencimiento de cada mes</td></tr>
+                    <tr><td>Días de gracia</td><td class="text-end fw-bold">@cfg.DiasGracia días</td></tr>
+                    <tr><td>Tasa de recargo por mora</td><td class="text-end fw-bold">@((cfg.TasaRecargoMensual * 100).ToString("0.##")) % mensual</td></tr>
+                    <tr><td>Vigente desde</td><td class="text-end fw-bold">@cfg.VigenteDesde.ToString("dd/MM/yyyy")</td></tr>
+                </table>
+                <a asp-controller="ConfiguracionCobro" asp-action="Index" class="small">Editar parámetros ›</a>
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="seccion">
+            <h2>Resumen antes de generar · @Formato.Periodo(Model.Anio, Model.Mes)</h2>
+
+            @if (Model.Error is not null)
+            {
+                <div class="alert alert-warning mb-0">@Model.Error</div>
+            }
+            else
+            {
+                <div class="row g-2 mb-3">
+                    <div class="col-4"><div class="kpi"><div class="kpi-etiqueta">Unidades activas</div><div class="kpi-valor">@Model.UnidadesActivas</div></div></div>
+                    <div class="col-4"><div class="kpi"><div class="kpi-etiqueta">Ya generadas</div><div class="kpi-valor">@Model.YaGeneradas</div></div></div>
+                    <div class="col-4"><div class="kpi"><div class="kpi-etiqueta">Total a emitir</div><div class="kpi-valor">@Model.TotalAEmitir.ToString("C")</div></div></div>
+                </div>
+
+                @if (Model.PorGenerar > 0)
+                {
+                    <table class="table table-sm align-middle">
+                        <thead><tr><th>Tipo de unidad</th><th class="text-end">Unidades</th><th class="text-end">Subtotal</th></tr></thead>
+                        <tbody>
+                            @foreach (var t in Model.PorTipo)
+                            {
+                                <tr><td>@t.Tipo</td><td class="text-end">@t.Unidades</td><td class="text-end monto">@t.Subtotal.ToString("C")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                    <p class="texto-pequeno">
+                        Fecha de emisión: @Model.FechaEmision.ToString("dd/MM/yyyy") ·
+                        Fecha de vencimiento: @Model.FechaVencimiento.ToString("dd/MM/yyyy") ·
+                        Límite sin recargo: @Model.FechaLimite.ToString("dd/MM/yyyy")
+                    </p>
+                    <form asp-action="Generar" method="post" class="d-flex justify-content-end gap-2">
+                        <input type="hidden" name="anio" value="@Model.Anio" />
+                        <input type="hidden" name="mes" value="@Model.Mes" />
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                        <button type="submit" class="btn btn-primary">Generar @Model.PorGenerar cuotas</button>
+                    </form>
+                }
+                else
+                {
+                    <div class="alert alert-info mb-0">Todas las unidades activas ya tienen cuota de este periodo.</div>
+                }
+            }
+        </div>
+    </div>
+</div>
