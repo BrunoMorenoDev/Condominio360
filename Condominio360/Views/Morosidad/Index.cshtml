@@ -1,0 +1,134 @@
+@model ReporteMorosidadViewModel
+@{
+    ViewData["Title"] = "Reporte de morosidad";
+    var cfg = Model.Configuracion;
+}
+<div class="migas">Cobranza › Reporte de morosidad</div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-1">
+    <h1 class="h3 mb-0">Reporte de morosidad</h1>
+    <a asp-action="Exportar" asp-route-corte="@Model.Corte.ToString("yyyy-MM-dd")" asp-route-torre="@Model.Torre"
+       asp-route-clasificacion="@Model.Clasificacion" asp-route-buscar="@Model.Buscar"
+       class="btn btn-outline-primary"><i class="bi bi-download"></i> Exportar CSV</a>
+</div>
+<p class="text-secondary">Estado de pago de las unidades activas a una fecha de corte, con recargos calculados automáticamente.</p>
+
+<form asp-action="Index" method="get" class="filtros row g-2 align-items-end">
+    <div class="col-6 col-md-2">
+        <label class="form-label" for="corte">Fecha de corte</label>
+        <input id="corte" name="corte" type="date" class="form-control" value="@Model.Corte.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label" for="torre">Torre / bloque</label>
+        <select id="torre" name="torre" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var t in Model.Torres)
+            {
+                <option value="@t" selected="@(Model.Torre == t)">@t</option>
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label" for="clasificacion">Clasificación</label>
+        <select id="clasificacion" name="clasificacion" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var c in Enum.GetValues<ClasificacionMorosidad>())
+            {
+                <option value="@c" selected="@(Model.Clasificacion == c)">@Formato.Texto(c)</option>
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-3">
+        <label class="form-label" for="buscar">Buscar unidad o responsable</label>
+        <input id="buscar" name="buscar" class="form-control" value="@Model.Buscar" placeholder="Ej. A-201 o Andrade" />
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-primary w-100">Consultar</button>
+    </div>
+</form>
+
+@if (cfg is null)
+{
+    <div class="alert alert-warning">No existe una configuración de cobro.</div>
+}
+else
+{
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+            <div class="kpi">
+                <div class="kpi-etiqueta">Índice de morosidad</div>
+                <div class="kpi-valor">@Model.IndiceMorosidad.ToString("0.#") %</div>
+                <div class="kpi-nota">@Model.UnidadesMorosas de @Model.TotalUnidadesActivas unidades activas</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi">
+                <div class="kpi-etiqueta">Cartera vencida</div>
+                <div class="kpi-valor negativo">@Model.CarteraVencida.ToString("C")</div>
+                <div class="kpi-nota">capital + recargos por mora</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi">
+                <div class="kpi-etiqueta">Recaudación @Model.PeriodoRecaudacion</div>
+                <div class="kpi-valor">@Model.TasaRecaudacion.ToString("0.#") %</div>
+                <div class="kpi-nota">@Model.CobradoPeriodo.ToString("C") de @Model.EmitidoPeriodo.ToString("C") emitidos</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi">
+                <div class="kpi-etiqueta">Unidades al día</div>
+                <div class="kpi-valor">@Model.UnidadesAlDia</div>
+                <div class="kpi-nota">sin cuotas vencidas</div>
+            </div>
+        </div>
+    </div>
+
+    @if (!Model.Filas.Any())
+    {
+        <div class="vacio"><p class="mb-0">Ninguna unidad coincide con los filtros.</p></div>
+    }
+    else
+    {
+        <div class="table-responsive tabla-caja">
+            <table class="table table-hover align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Unidad</th>
+                        <th>Responsable de pago</th>
+                        <th class="text-end">Alícuota</th>
+                        <th class="text-center">Cuotas vencidas</th>
+                        <th class="text-center">Días de mora</th>
+                        <th class="text-end">Recargo</th>
+                        <th class="text-end">Saldo vencido</th>
+                        <th>Clasificación</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in Model.Filas)
+                    {
+                        <tr>
+                            <td><span class="placa">@f.Unidad.Codigo</span></td>
+                            <td>@(f.Responsable?.NombreCompleto ?? "—")</td>
+                            <td class="text-end monto">@f.Unidad.Alicuota.ToString("C")</td>
+                            <td class="text-center">@f.CuotasVencidas</td>
+                            <td class="text-center">@f.DiasMora</td>
+                            <td class="text-end monto">@f.Recargo.ToString("C")</td>
+                            <td class="text-end monto fw-bold">@f.SaldoVencido.ToString("C")</td>
+                            <td><span class="@Formato.ClaseClasificacion(f.Clasificacion)">@Formato.Texto(f.Clasificacion)</span></td>
+                            <td class="text-end text-nowrap">
+                                <a asp-controller="EstadoCuenta" asp-action="Index" asp-route-unidadId="@f.Unidad.Id"
+                                   asp-route-corte="@Model.Corte.ToString("yyyy-MM-dd")">Ver estado ›</a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="texto-pequeno mt-2">
+            Mostrando @Model.Filas.Count de @Model.TotalUnidadesActivas unidades · interés por días de mora ·
+            tasa de recargo @((cfg.TasaRecargoMensual * 100).ToString("0.##")) % mensual · @cfg.DiasGracia días de gracia ·
+            n = 0 Al día · n = 1 Atraso leve · n = 2–3 Moroso · n ≥ 4 Moroso crítico
+        </p>
+    }
+}

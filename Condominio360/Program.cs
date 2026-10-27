@@ -1,6 +1,7 @@
 using System.Globalization;
 using Condominio360.Data;
 using Condominio360.Models;
+using Condominio360.Services;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -9,6 +10,10 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// ---------- Configuración local (NO se sube a Git) ----------
+// appsettings.Local.json guarda la cadena de conexión real de Supabase.
+builder.Configuration.AddJsonFile("appsettings.Local.json", optional: true, reloadOnChange: true);
+
 // ---------- MVC ----------
 builder.Services.AddControllersWithViews(options =>
 {
@@ -16,9 +21,20 @@ builder.Services.AddControllersWithViews(options =>
     options.SuppressImplicitRequiredAttributeForNonNullableReferenceTypes = true;
 });
 
-// ---------- Base de datos (EF Core + SQLite) ----------
+// ---------- Base de datos (EF Core + PostgreSQL en Supabase) ----------
+var cadenaConexion = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(cadenaConexion) || cadenaConexion.Contains("<CONTRASENA>"))
+{
+    throw new InvalidOperationException(
+        "Falta la cadena de conexión a Supabase. Copie appsettings.Local.example.json como " +
+        "appsettings.Local.json y complete 'ConnectionStrings:DefaultConnection'.");
+}
+
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(cadenaConexion));
+
+// ---------- Servicios del Core ----------
+builder.Services.AddScoped<CobranzaService>();
 
 // ---------- Hash de contraseñas (PBKDF2 de ASP.NET Core Identity) ----------
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
@@ -50,12 +66,12 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
-// ---------- Crear BD y datos iniciales ----------
+// ---------- Datos mínimos (roles y administrador) ----------
+// Las tablas se crean con los scripts de la carpeta /database (Supabase).
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     var hasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher<Usuario>>();
-    db.Database.EnsureCreated();
     DbSeeder.Seed(db, hasher, app.Configuration);
 }
 

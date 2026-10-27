@@ -1,0 +1,23 @@
+@model PagoFormViewModel
+@{
+    ViewData["Title"] = "Editar pago";
+}
+<div class="migas"><a asp-action="Index">Pagos</a> › <a asp-action="Details" asp-route-id="@Model.Id">Pago #@Model.Id</a> › Editar</div>
+<h1 class="h3 mb-1">Editar pago por verificar #@Model.Id</h1>
+<p class="text-secondary">Corrija los datos reportados antes de verificarlo. El pago seguirá "Por verificar".</p>
+
+<div class="tarjeta-form">
+    <form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+        <partial name="_Formulario" model="Model" />
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">Guardar cambios</button>
+            <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/cascada.js" asp-append-version="true"></script>
+    <script src="~/js/pago-form.js" asp-append-version="true"></script>
+}

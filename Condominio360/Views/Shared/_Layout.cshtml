@@ -1,9 +1,11 @@
 @{
     var controlador = ViewContext.RouteData.Values["controller"]?.ToString();
     var autenticado = User.Identity?.IsAuthenticated == true;
+    var esAdmin = User.IsInRole(Rol.Administrador);
     var nombre = User.FindFirst("NombreCompleto")?.Value ?? User.Identity?.Name;
+    var rol = User.FindFirst(ClaimTypes.Role)?.Value;
     var inicio = autenticado ? "Panel" : "Home";
-    string Activo(string c) => controlador == c ? "active" : "";
+    string Activo(params string[] c) => c.Contains(controlador) ? "active" : "";
 }
 <!DOCTYPE html>
 <html lang="es">
@@ -20,7 +22,7 @@
 </head>
 <body>
     <header>
-        <nav class="navbar navbar-expand-md navbar-dark barra">
+        <nav class="navbar navbar-expand-lg navbar-dark barra">
             <div class="container">
                 <a class="navbar-brand marca" asp-controller="@inicio" asp-action="Index">
                     <span class="marca-placa">360</span> Condominio360
@@ -34,11 +36,30 @@
                     {
                         <ul class="navbar-nav me-auto">
                             <li class="nav-item"><a class="nav-link @Activo("Panel")" asp-controller="Panel" asp-action="Index"><i class="bi bi-speedometer2"></i> Panel</a></li>
-                            <li class="nav-item"><a class="nav-link @Activo("Unidades")" asp-controller="Unidades" asp-action="Index"><i class="bi bi-buildings"></i> Unidades</a></li>
-                            <li class="nav-item"><a class="nav-link @Activo("Residentes")" asp-controller="Residentes" asp-action="Index"><i class="bi bi-people"></i> Residentes</a></li>
+                            @if (esAdmin)
+                            {
+                                <li class="nav-item"><a class="nav-link @Activo("Unidades")" asp-controller="Unidades" asp-action="Index"><i class="bi bi-buildings"></i> Unidades</a></li>
+                                <li class="nav-item"><a class="nav-link @Activo("Residentes")" asp-controller="Residentes" asp-action="Index"><i class="bi bi-people"></i> Residentes</a></li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle @Activo("Morosidad", "EstadoCuenta", "Pagos", "Cuotas", "ConfiguracionCobro")"
+                                       href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-cash-coin"></i> Cobranza
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item @Activo("Morosidad")" asp-controller="Morosidad" asp-action="Index"><i class="bi bi-graph-down-arrow"></i> Reporte de morosidad</a></li>
+                                        <li><a class="dropdown-item @Activo("EstadoCuenta")" asp-controller="EstadoCuenta" asp-action="Index"><i class="bi bi-receipt"></i> Estado de cuenta</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item @Activo("Pagos")" asp-controller="Pagos" asp-action="Index"><i class="bi bi-wallet2"></i> Pagos</a></li>
+                                        <li><a class="dropdown-item @Activo("Cuotas")" asp-controller="Cuotas" asp-action="Index"><i class="bi bi-calendar3"></i> Cuotas</a></li>
+                                        <li><a class="dropdown-item" asp-controller="Cuotas" asp-action="Generar"><i class="bi bi-calendar-plus"></i> Generar cuotas</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item @Activo("ConfiguracionCobro")" asp-controller="ConfiguracionCobro" asp-action="Index"><i class="bi bi-sliders"></i> Configuración de cobro</a></li>
+                                    </ul>
+                                </li>
+                            }
                         </ul>
                         <div class="d-flex align-items-center gap-3">
-                            <span class="usuario-actual"><i class="bi bi-person-circle"></i> @nombre</span>
+                            <span class="usuario-actual"><i class="bi bi-person-circle"></i> @nombre <span class="opacity-75">· @rol</span></span>
                             <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
                                 <button type="submit" class="btn btn-sm btn-outline-light">Cerrar sesión</button>
                             </form>
@@ -60,7 +81,7 @@
     </main>
 
     <footer class="pie">
-        <div class="container">Condominio360 · Proyecto de Ingeniería Web · ASP.NET Core MVC</div>
+        <div class="container">Condominio360 · Proyecto de Ingeniería Web · ASP.NET Core MVC · PostgreSQL (Supabase)</div>
     </footer>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>

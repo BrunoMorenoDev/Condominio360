@@ -7,11 +7,21 @@ obj/
 .vscode/
 .idea/
 
-## Base de datos local (se crea al ejecutar)
+## Base de datos local antigua (SQLite)
 *.db
 *.db-shm
 *.db-wal
 
+## Secretos: cadena de conexión real de Supabase (NO subir)
+appsettings.Local.json
+**/appsettings.Local.json
+
+## Comprobantes de pago subidos por los usuarios
+**/App_Data/
+
 ## Sistema operativo
 .DS_Store
 Thumbs.db
+
+## Verificación local (scripts de prueba)
+.claude-verificacion/

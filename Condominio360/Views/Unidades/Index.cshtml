@@ -28,6 +28,7 @@ else
                     <th class="text-end">Área</th>
                     <th class="text-end">Alícuota</th>
                     <th class="text-center">Residentes</th>
+                    <th>Estado</th>
                     <th class="text-end">Acciones</th>
                 </tr>
             </thead>
@@ -39,9 +40,14 @@ else
                         <td>@u.Piso</td>
                         <td>@u.Tipo</td>
                         <td class="text-end">@u.AreaM2.ToString("0.##") m²</td>
-                        <td class="text-end">@u.Alicuota.ToString("C")</td>
+                        <td class="text-end monto">@u.Alicuota.ToString("C")</td>
                         <td class="text-center">@u.Residentes.Count</td>
+                        <td>
+                            @if (u.Activa) { <span class="estado estado-ok">Activa</span> }
+                            else { <span class="estado estado-neutro">Inactiva</span> }
+                        </td>
                         <td class="text-end text-nowrap">
+                            <a asp-controller="EstadoCuenta" asp-action="Index" asp-route-unidadId="@u.Id" class="btn btn-sm btn-outline-secondary" title="Estado de cuenta"><i class="bi bi-receipt"></i><span class="visually-hidden">Estado de cuenta</span></a>
                             <a asp-action="Details" asp-route-id="@u.Id" class="btn btn-sm btn-outline-secondary" title="Ver"><i class="bi bi-eye"></i><span class="visually-hidden">Ver</span></a>
                             <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i><span class="visually-hidden">Editar</span></a>
                             <a asp-action="Delete" asp-route-id="@u.Id" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i><span class="visually-hidden">Eliminar</span></a>

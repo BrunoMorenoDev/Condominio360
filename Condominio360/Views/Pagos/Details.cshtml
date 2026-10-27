@@ -1,0 +1,66 @@
+@model Pago
+@{
+    ViewData["Title"] = $"Pago #{Model.Id}";
+}
+<div class="migas"><a asp-action="Index">Pagos</a> › Pago #@Model.Id</div>
+<h1 class="h3 mb-3">Pago #@Model.Id</h1>
+
+<partial name="_Alertas" />
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="seccion">
+            <h2>Datos del pago</h2>
+            <partial name="_DatosPago" model="Model" />
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="seccion">
+            <h2>Distribución entre cuotas</h2>
+            @if (Model.Estado == EstadoPago.PorVerificar)
+            {
+                <p class="text-secondary">El pago aún no se aplica. Al verificarlo se distribuye automáticamente.</p>
+                <a asp-action="Verificar" asp-route-id="@Model.Id" class="btn btn-primary">Revisar y verificar</a>
+            }
+            else if (Model.Estado == EstadoPago.Rechazado)
+            {
+                <p class="text-secondary mb-0">Pago rechazado: no se aplicó a ninguna cuota.</p>
+            }
+            else
+            {
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Cuota</th><th class="text-end">Recargo</th><th class="text-end">Capital</th><th class="text-end">Total</th></tr></thead>
+                    <tbody>
+                        @foreach (var a in Model.Aplicaciones.OrderBy(a => a.Cuota?.FechaVencimiento))
+                        {
+                            <tr>
+                                <td><a asp-controller="Cuotas" asp-action="Details" asp-route-id="@a.CuotaId">@a.Cuota?.Periodo</a></td>
+                                <td class="text-end monto">@a.MontoRecargo.ToString("C")</td>
+                                <td class="text-end monto">@a.MontoCapital.ToString("C")</td>
+                                <td class="text-end monto">@a.Total().ToString("C")</td>
+                            </tr>
+                        }
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <td>Total aplicado</td>
+                            <td class="text-end monto">@Model.Aplicaciones.Sum(a => a.MontoRecargo).ToString("C")</td>
+                            <td class="text-end monto">@Model.Aplicaciones.Sum(a => a.MontoCapital).ToString("C")</td>
+                            <td class="text-end monto">@Model.Aplicaciones.Sum(a => a.Total()).ToString("C")</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2">
+    @if (Model.Estado == EstadoPago.PorVerificar)
+    {
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary"><i class="bi bi-pencil"></i> Editar</a>
+        <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger"><i class="bi bi-trash"></i> Eliminar</a>
+    }
+    <a asp-controller="EstadoCuenta" asp-action="Index" asp-route-unidadId="@Model.UnidadId" class="btn btn-outline-primary"><i class="bi bi-receipt"></i> Estado de cuenta</a>
+    <a asp-action="Index" class="btn btn-outline-secondary">Volver a pagos</a>
+</div>

@@ -1,0 +1,24 @@
+# Compilados
+**/bin/
+**/obj/
+
+# Secretos: la cadena de conexión real NUNCA entra a la imagen
+**/appsettings.Local.json
+
+# Archivos subidos localmente
+**/App_Data/
+
+# Git, IDE y sistema
+.git/
+.gitignore
+.vs/
+.vscode/
+.idea/
+**/.DS_Store
+.claude-verificacion/
+
+# Documentación y scripts que no necesita la app
+*.pdf
+*.md
+database/
+LICENSE

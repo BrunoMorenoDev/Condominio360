@@ -1,0 +1,16 @@
+@model Pago
+@{
+    ViewData["Title"] = "Eliminar pago";
+}
+<div class="migas"><a asp-action="Index">Pagos</a> › Eliminar</div>
+<h1 class="h3 mb-3">Eliminar pago por verificar #@Model.Id</h1>
+
+<div class="tarjeta-form">
+    <p>¿Seguro que desea eliminar este pago reportado? Úselo solo para registros duplicados o de prueba; si el pago no es válido, es mejor <a asp-action="Verificar" asp-route-id="@Model.Id">rechazarlo</a> para que quede el motivo.</p>
+    <partial name="_DatosPago" model="Model" />
+    <form asp-action="Delete" method="post" class="d-flex gap-2 mt-3">
+        <input type="hidden" asp-for="Id" />
+        <button type="submit" class="btn btn-danger">Eliminar pago</button>
+        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancelar</a>
+    </form>
+</div>

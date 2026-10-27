@@ -1,0 +1,118 @@
+@model CuotasIndexViewModel
+@{
+    ViewData["Title"] = "Cuotas";
+}
+<div class="migas">Cobranza › Cuotas</div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Cuotas</h1>
+    <div class="d-flex gap-2">
+        <form asp-action="ActualizarEstados" method="post" class="m-0">
+            <button type="submit" class="btn btn-outline-secondary" title="Recalcula Pendiente / Parcial / Vencida a la fecha de hoy">
+                <i class="bi bi-arrow-repeat"></i> Recalcular estados
+            </button>
+        </form>
+        <a asp-action="Generar" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Generar cuotas</a>
+    </div>
+</div>
+
+<partial name="_Alertas" />
+
+<form asp-action="Index" method="get" class="filtros row g-2 align-items-end">
+    <div class="col-6 col-md-2">
+        <label class="form-label" for="mes">Mes</label>
+        <select id="mes" name="mes" class="form-select">
+            <option value="">Todos</option>
+            @for (var m = 1; m <= 12; m++)
+            {
+                <option value="@m" selected="@(Model.Mes == m)">@Formato.NombreMes(m)</option>
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label" for="anio">Año</label>
+        <select id="anio" name="anio" class="form-select">
+            @foreach (var a in Model.Anios)
+            {
+                <option value="@a" selected="@(Model.Anio == a)">@a</option>
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label" for="torre">Torre / bloque</label>
+        <select id="torre" name="torre" class="form-select">
+            <option value="">Todas</option>
+            @foreach (var t in Model.Torres)
+            {
+                <option value="@t" selected="@(Model.Torre == t)">@t</option>
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label" for="estado">Estado</label>
+        <select id="estado" name="estado" class="form-select">
+            <option value="">Todos</option>
+            @foreach (var e in Enum.GetValues<EstadoCuota>())
+            {
+                <option value="@e" selected="@(Model.Estado == e)">@e</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">Filtrar</button>
+    </div>
+</form>
+
+@if (!Model.Filas.Any())
+{
+    <div class="vacio">
+        <p class="mb-2">No hay cuotas para los filtros seleccionados.</p>
+        <a asp-action="Generar" asp-route-anio="@Model.Anio" asp-route-mes="@Model.Mes" class="btn btn-primary btn-sm">Generar cuotas del periodo</a>
+    </div>
+}
+else
+{
+    <div class="table-responsive tabla-caja">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Unidad</th>
+                    <th>Periodo</th>
+                    <th>Vence</th>
+                    <th class="text-end">Monto</th>
+                    <th class="text-center">Meses de atraso</th>
+                    <th class="text-end">Recargo</th>
+                    <th class="text-end">Pagado</th>
+                    <th class="text-end">Saldo hoy</th>
+                    <th>Estado</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var f in Model.Filas)
+                {
+                    <tr>
+                        <td><span class="placa">@f.Cuota.Unidad?.Codigo</span></td>
+                        <td>@f.Cuota.Periodo</td>
+                        <td>@f.Cuota.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                        <td class="text-end monto">@f.Cuota.Monto.ToString("C")</td>
+                        <td class="text-center">@(f.MesesAtraso == 0 ? "—" : f.MesesAtraso.ToString())</td>
+                        <td class="text-end monto">@f.Recargo.ToString("C")</td>
+                        <td class="text-end monto">@f.Pagado.ToString("C")</td>
+                        <td class="text-end monto fw-bold">@f.Saldo.ToString("C")</td>
+                        <td><span class="@Formato.ClaseEstado(f.Estado)">@f.Estado</span></td>
+                        <td class="text-end"><a asp-action="Details" asp-route-id="@f.Cuota.Id" class="btn btn-sm btn-outline-secondary" title="Ver"><i class="bi bi-eye"></i><span class="visually-hidden">Ver</span></a></td>
+                    </tr>
+                }
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td colspan="3">@Model.Filas.Count cuota(s)</td>
+                    <td class="text-end monto">@Model.TotalEmitido.ToString("C")</td>
+                    <td colspan="3"></td>
+                    <td class="text-end monto">@Model.TotalSaldo.ToString("C")</td>
+                    <td colspan="2"></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+}

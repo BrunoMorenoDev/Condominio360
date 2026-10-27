@@ -1,6 +1,7 @@
 @model Residente
 @{
-    var unidades = ViewData["Unidades"] as SelectList;
+    var torres = ViewData["Torres"] as SelectList;
+    var unidades = ViewData["Unidades"] as IEnumerable<SelectListItem> ?? Enumerable.Empty<SelectListItem>();
 }
 <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
 <input type="hidden" asp-for="Id" />
@@ -18,7 +19,8 @@
     </div>
     <div class="col-sm-6">
         <label asp-for="Cedula" class="form-label"></label>
-        <input asp-for="Cedula" class="form-control" maxlength="10" inputmode="numeric" />
+        <input asp-for="Cedula" class="form-control" maxlength="10" inputmode="numeric" autocomplete="off" />
+        <div class="form-text">Se valida en el servidor con el dígito verificador del Registro Civil.</div>
         <span asp-validation-for="Cedula" class="text-danger small"></span>
     </div>
     <div class="col-sm-6">
@@ -31,10 +33,21 @@
         <input asp-for="Correo" class="form-control" />
         <span asp-validation-for="Correo" class="text-danger small"></span>
     </div>
+
+    @* Dropdowns en cascada: al elegir la torre se cargan solo sus unidades *@
+    <div class="col-sm-4">
+        <label for="Torre" class="form-label">Torre / bloque</label>
+        <select id="Torre" class="form-select" asp-items="torres"
+                data-cascada-destino="#UnidadId"
+                data-cascada-url="@Url.Action("Unidades", "Catalogos")?torre=">
+            <option value="">Seleccione…</option>
+        </select>
+    </div>
     <div class="col-sm-4">
         <label asp-for="UnidadId" class="form-label"></label>
-        <select asp-for="UnidadId" asp-items="unidades" class="form-select">
-            <option value="0">Seleccione…</option>
+        <select asp-for="UnidadId" asp-items="unidades" class="form-select"
+                data-vacio="Seleccione…" data-valor-vacio="0" data-sin-datos="La torre no tiene unidades">
+            <option value="0">@(unidades.Any() ? "Seleccione…" : "Primero elija la torre")</option>
         </select>
         <span asp-validation-for="UnidadId" class="text-danger small"></span>
     </div>
@@ -47,5 +60,12 @@
         <label asp-for="FechaIngreso" class="form-label"></label>
         <input asp-for="FechaIngreso" class="form-control" type="date" />
         <span asp-validation-for="FechaIngreso" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-8 d-flex align-items-end">
+        <div class="form-check mb-2">
+            <input asp-for="ResponsablePago" class="form-check-input" />
+            <label asp-for="ResponsablePago" class="form-check-label"></label>
+            <div class="form-text">Si la unidad ya tiene responsable, este residente lo reemplaza.</div>
+        </div>
     </div>
 </div>

@@ -197,3 +197,81 @@ a:focus-visible {
 @media (prefers-reduced-motion: reduce) {
     * { transition: none !important; }
 }
+
+/* =====================================================================
+   Core · Cobranza
+   ===================================================================== */
+
+/* Etiquetas de estado / clasificación */
+.estado {
+    display: inline-block;
+    padding: .15rem .55rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 700;
+    white-space: nowrap;
+    border: 1px solid transparent;
+}
+.estado-ok     { background: #e3f3e8; color: #1d6b3a; border-color: #bfe2cb; }
+.estado-info   { background: #e4eef6; color: #275d7a; border-color: #c3d8e8; }
+.estado-pend   { background: var(--c-laton-claro); color: #7a5d17; border-color: #e6d6a8; }
+.estado-alerta { background: #fdebd9; color: #9a4a0b; border-color: #f4cfa8; }
+.estado-mal    { background: #fbe4e4; color: #a12828; border-color: #f1c2c2; }
+.estado-neutro { background: #eceff1; color: #5b6a74; border-color: #d9dfe3; }
+
+/* Indicadores pequeños (reporte y estado de cuenta) */
+.kpi {
+    background: #fff;
+    border: 1px solid #d9dfe3;
+    border-radius: 6px;
+    padding: 1rem 1.1rem;
+    height: 100%;
+}
+.kpi-etiqueta { font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #6c7a84; }
+.kpi-valor    { font-size: 1.6rem; font-weight: 800; color: var(--c-pizarra); line-height: 1.15; }
+.kpi-valor.negativo { color: #a12828; }
+.kpi-nota     { font-size: .8rem; color: #6c7a84; }
+
+/* Barra de filtros */
+.filtros {
+    background: #fff;
+    border: 1px solid #d9dfe3;
+    border-radius: 6px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+.filtros .form-label { font-size: .78rem; font-weight: 700; color: #5b6a74; margin-bottom: .2rem; }
+
+.tabla-caja tfoot td { font-weight: 800; border-top: 2px solid #d9dfe3; }
+.monto { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.texto-pequeno { font-size: .82rem; color: #6c7a84; }
+
+/* Tarjeta de sección con título */
+.seccion {
+    background: #fff;
+    border: 1px solid #d9dfe3;
+    border-radius: 6px;
+    padding: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+.seccion > h2 { font-size: 1.05rem; margin-bottom: .9rem; }
+
+.aviso-regla {
+    background: var(--c-laton-claro);
+    border: 1px solid #e6d6a8;
+    border-radius: 6px;
+    padding: .6rem .9rem;
+    font-size: .88rem;
+}
+
+.migas { font-size: .82rem; color: #6c7a84; margin-bottom: .35rem; }
+.migas a { color: #6c7a84; }
+
+.barra .dropdown-menu { border-radius: 6px; }
+.barra .dropdown-item.active, .barra .dropdown-item:active { background: var(--c-primario); }
+
+.saldo-unidad { font-weight: 800; color: var(--c-pizarra); }
+
+@media (max-width: 575.98px) {
+    .kpi-valor { font-size: 1.3rem; }
+}

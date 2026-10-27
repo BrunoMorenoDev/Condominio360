@@ -56,7 +56,10 @@ else
                 @foreach (var r in Model)
                 {
                     <tr>
-                        <td>@r.Apellidos, @r.Nombres</td>
+                        <td>
+                            @r.Apellidos, @r.Nombres
+                            @if (r.ResponsablePago) { <span class="estado estado-info ms-1" title="Responsable de pago">Responsable</span> }
+                        </td>
                         <td>@r.Cedula</td>
                         <td><span class="placa">@r.Unidad?.Codigo</span></td>
                         <td>@r.Tipo</td>

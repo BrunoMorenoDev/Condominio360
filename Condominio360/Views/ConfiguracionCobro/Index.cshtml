@@ -1,0 +1,64 @@
+@model ConfiguracionCobroIndexViewModel
+@{
+    ViewData["Title"] = "Configuración de cobro";
+    var v = Model.Vigente;
+}
+<div class="migas">Cobranza › Configuración de cobro</div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Configuración de cobro</h1>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-sliders"></i> Nueva configuración</a>
+</div>
+
+<partial name="_Alertas" />
+
+@if (v is null)
+{
+    <div class="alert alert-warning">No existe una configuración de cobro. Regístrela para poder generar cuotas.</div>
+}
+else
+{
+    <div class="row g-3 mb-4">
+        <div class="col-sm-6 col-lg-3"><div class="kpi"><div class="kpi-etiqueta">Día de vencimiento (D)</div><div class="kpi-valor">@v.DiaVencimiento</div><div class="kpi-nota">de cada mes</div></div></div>
+        <div class="col-sm-6 col-lg-3"><div class="kpi"><div class="kpi-etiqueta">Días de gracia (G)</div><div class="kpi-valor">@v.DiasGracia</div><div class="kpi-nota">sin recargo después del vencimiento</div></div></div>
+        <div class="col-sm-6 col-lg-3"><div class="kpi"><div class="kpi-etiqueta">Tasa de recargo (t)</div><div class="kpi-valor">@((v.TasaRecargoMensual * 100).ToString("0.##")) %</div><div class="kpi-nota">mensual sobre el capital pendiente</div></div></div>
+        <div class="col-sm-6 col-lg-3"><div class="kpi"><div class="kpi-etiqueta">Vigente desde</div><div class="kpi-valor">@v.VigenteDesde.ToString("dd/MM/yyyy")</div></div></div>
+    </div>
+
+    <div class="aviso-regla mb-4">
+        <strong>Cómo se calcula:</strong> fecha límite = vencimiento + @v.DiasGracia días ·
+        meses de atraso = ⌈días de atraso / 30⌉ ·
+        recargo = capital pendiente × @((v.TasaRecargoMensual * 100).ToString("0.##")) % × meses de atraso.
+    </div>
+}
+
+<h2 class="h5">Historial</h2>
+<div class="table-responsive tabla-caja">
+    <table class="table align-middle mb-0">
+        <thead>
+            <tr>
+                <th>Vigente desde</th>
+                <th class="text-center">Día de vencimiento</th>
+                <th class="text-center">Días de gracia</th>
+                <th class="text-end">Tasa mensual</th>
+                <th>Registrada por</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var c in Model.Historial)
+            {
+                <tr>
+                    <td>@c.VigenteDesde.ToString("dd/MM/yyyy")</td>
+                    <td class="text-center">@c.DiaVencimiento</td>
+                    <td class="text-center">@c.DiasGracia</td>
+                    <td class="text-end">@((c.TasaRecargoMensual * 100).ToString("0.##")) %</td>
+                    <td>@c.ActualizadoPorUsuario?.NombreCompleto</td>
+                    <td>
+                        @if (v is not null && c.Id == v.Id) { <span class="estado estado-ok">Vigente</span> }
+                        else if (c.VigenteDesde > DateTime.Today) { <span class="estado estado-info">Programada</span> }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+</div>
