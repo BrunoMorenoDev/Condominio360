@@ -1,0 +1,177 @@
+@model EstadoCuentaViewModel
+@*
+    Cuerpo del estado de cuenta (indicadores, cuotas e historial de pagos).
+    Lo comparten el administrador (Cobranza › Estado de cuenta) y el residente (Mi cuenta).
+    Los enlaces a pantallas de administración solo se muestran al administrador.
+*@
+@{
+    var esAdmin = User.IsInRole(Rol.Administrador);
+    var idUsuario = User.IdUsuario();
+}
+@if (Model.Configuracion is null)
+{
+    <div class="alert alert-warning">No existe una configuración de cobro.</div>
+}
+else
+{
+    <div class="row g-3 mb-3">
+        <div class="col-6 col-lg-3">
+            <div class="kpi">
+                <div class="kpi-etiqueta">Saldo total</div>
+                <div class="kpi-valor">@Model.SaldoTotal.ToString("C")</div>
+                <div class="kpi-nota">al @Model.Corte.ToString("dd/MM/yyyy")</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi">
+                <div class="kpi-etiqueta">Saldo vencido</div>
+                <div class="kpi-valor @(Model.SaldoVencido > 0 ? "negativo" : "")">@Model.SaldoVencido.ToString("C")</div>
+                <div class="kpi-nota">@Model.CuotasVencidas cuota(s) · @Model.DiasMoraMasAntigua días de mora</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi">
+                <div class="kpi-etiqueta">Recargos acumulados</div>
+                <div class="kpi-valor">@Model.RecargosAcumulados.ToString("C")</div>
+                <div class="kpi-nota">@((Model.Configuracion.TasaRecargoMensual * 100).ToString("0.##")) % mensual sobre capital pendiente</div>
+            </div>
+        </div>
+        <div class="col-6 col-lg-3">
+            <div class="kpi">
+                <div class="kpi-etiqueta">Clasificación</div>
+                <div class="kpi-valor"><span class="@Formato.ClaseClasificacion(Model.Clasificacion)">@Formato.Texto(Model.Clasificacion)</span></div>
+                <div class="kpi-nota">
+                    @((Model.Clasificacion is ClasificacionMorosidad.Moroso or ClasificacionMorosidad.MorosoCritico)
+                        ? "No puede reservar áreas comunales" : "Puede reservar áreas comunales")
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="seccion">
+        <h2>Cuotas</h2>
+        @if (!Model.Cuotas.Any())
+        {
+            <p class="text-secondary mb-0">No hay cuotas emitidas hasta la fecha de corte.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Periodo</th><th>Vence</th><th class="text-end">Alícuota</th>
+                            <th class="text-center">Meses de atraso</th><th class="text-end">Recargo</th>
+                            <th class="text-end">Pagado</th><th class="text-end">Saldo</th><th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var f in Model.Cuotas)
+                        {
+                            <tr>
+                                <td>
+                                    @if (esAdmin)
+                                    {
+                                        <a asp-controller="Cuotas" asp-action="Details" asp-route-id="@f.Cuota.Id">@f.Cuota.Periodo</a>
+                                    }
+                                    else
+                                    {
+                                        @f.Cuota.Periodo
+                                    }
+                                </td>
+                                <td>@f.Cuota.FechaVencimiento.ToString("dd/MM/yyyy")</td>
+                                <td class="text-end monto">@f.Cuota.Monto.ToString("C")</td>
+                                <td class="text-center">@(f.MesesAtraso == 0 ? "—" : f.MesesAtraso.ToString())</td>
+                                <td class="text-end monto">@f.Recargo.ToString("C")</td>
+                                <td class="text-end monto">@f.Pagado.ToString("C")</td>
+                                <td class="text-end monto fw-bold">@f.Saldo.ToString("C")</td>
+                                <td><span class="@Formato.ClaseEstado(f.Estado)">@f.Estado</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+            <p class="texto-pequeno mt-2 mb-0">
+                Fecha límite sin recargo = vencimiento + @Model.Configuracion.DiasGracia días.
+                Meses de atraso = ⌈días de atraso / 30⌉.
+            </p>
+        }
+    </div>
+
+    <div class="seccion">
+        <h2>Historial de pagos</h2>
+        @if (!Model.Pagos.Any())
+        {
+            <p class="text-secondary mb-0">La unidad no registra pagos.</p>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead>
+                        <tr><th>Fecha</th><th>Método</th><th>Referencia</th><th class="text-end">Monto</th><th>Aplicado a</th><th>Registrado por</th><th>Estado</th><th></th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var p in Model.Pagos)
+                        {
+                            <tr>
+                                <td>
+                                    @if (esAdmin)
+                                    {
+                                        <a asp-controller="Pagos" asp-action="Details" asp-route-id="@p.Id">@p.FechaPago.ToString("dd/MM/yyyy")</a>
+                                    }
+                                    else
+                                    {
+                                        @p.FechaPago.ToString("dd/MM/yyyy")
+                                    }
+                                </td>
+                                <td>@Formato.Texto(p.Metodo)</td>
+                                <td>@(p.Referencia ?? "—")</td>
+                                <td class="text-end monto">@p.Monto.ToString("C")</td>
+                                <td class="texto-pequeno">
+                                    @if (p.Aplicaciones.Any())
+                                    {
+                                        @(string.Join(" · ", p.Aplicaciones.OrderBy(a => a.Cuota?.FechaVencimiento)
+                                            .Select(a => $"{a.Cuota?.Periodo} (recargo {a.MontoRecargo:C}, capital {a.MontoCapital:C})")))
+                                    }
+                                    else if (p.Estado == EstadoPago.Rechazado)
+                                    {
+                                        @("Rechazado: " + p.Observacion)
+                                    }
+                                    else if (p.Estado == EstadoPago.PorVerificar)
+                                    {
+                                        @("Se aplicará al ser verificado")
+                                    }
+                                    else
+                                    {
+                                        @("—")
+                                    }
+                                </td>
+                                <td>@p.RegistradoPorUsuario?.NombreCompleto</td>
+                                <td><span class="@Formato.ClaseEstado(p.Estado)">@Formato.Texto(p.Estado)</span></td>
+                                <td class="text-end text-nowrap">
+                                    @if (!string.IsNullOrEmpty(p.Comprobante))
+                                    {
+                                        <a asp-controller="@(esAdmin ? "Pagos" : "MiCuenta")" asp-action="Comprobante" asp-route-id="@p.Id"
+                                           target="_blank" class="btn btn-sm btn-outline-secondary" title="Ver comprobante">
+                                            <i class="bi bi-file-earmark-image"></i><span class="visually-hidden">Ver comprobante</span>
+                                        </a>
+                                    }
+                                    @if (!esAdmin && p.Estado == EstadoPago.PorVerificar && p.RegistradoPor == idUsuario)
+                                    {
+                                        <form asp-controller="MiCuenta" asp-action="AnularReporte" asp-route-id="@p.Id" method="post" class="d-inline"
+                                              onsubmit="return confirm('¿Anular este reporte de pago?');">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Anular reporte">
+                                                <i class="bi bi-x-lg"></i><span class="visually-hidden">Anular reporte</span>
+                                            </button>
+                                        </form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+}

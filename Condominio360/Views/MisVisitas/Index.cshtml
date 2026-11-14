@@ -1,0 +1,84 @@
+@model List<Visita>
+@{
+    ViewData["Title"] = "Mis visitas";
+    var proximas = Model.Where(v => v.FechaEsperada.Date >= DateTime.Today && v.Estado is EstadoVisita.Autorizada or EstadoVisita.Ingresada)
+                        .OrderBy(v => v.FechaEsperada).ToList();
+    var historial = Model.Except(proximas).ToList();
+}
+<div class="migas">Mi cuenta › Visitas</div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Visitas de <span class="placa">@ViewData["Unidad"]</span></h1>
+    <a asp-action="Autorizar" class="btn btn-primary"><i class="bi bi-person-check"></i> Autorizar visita</a>
+</div>
+
+<partial name="_Alertas" />
+
+<div class="seccion">
+    <h2>Próximas visitas</h2>
+    @if (!proximas.Any())
+    {
+        <p class="text-secondary mb-0">No tiene visitas autorizadas pendientes.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>Fecha</th><th>Visitante</th><th>Cédula</th><th>Placa</th><th>Estado</th><th class="text-end"></th></tr></thead>
+                <tbody>
+                    @foreach (var v in proximas)
+                    {
+                        <tr>
+                            <td>@v.FechaEsperada.ToString("dd/MM/yyyy")</td>
+                            <td>@v.NombreVisitante</td>
+                            <td>@v.CedulaVisitante</td>
+                            <td>@(v.PlacaVehiculo ?? "—")</td>
+                            <td>
+                                <span class="@Formato.ClaseEstado(v.Estado)">@v.Estado</span>
+                                @if (v.HoraIngreso is not null) { <span class="texto-pequeno">desde @v.HoraIngreso.Value.ToString("HH:mm")</span> }
+                            </td>
+                            <td class="text-end">
+                                @if (v.Estado == EstadoVisita.Autorizada)
+                                {
+                                    <form asp-action="Cancelar" asp-route-id="@v.Id" method="post" class="d-inline"
+                                          onsubmit="return confirm('¿Cancelar la autorización de esta visita?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i> Cancelar</button>
+                                    </form>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>
+
+<div class="seccion">
+    <h2>Historial</h2>
+    @if (!historial.Any())
+    {
+        <p class="text-secondary mb-0">Sin visitas anteriores.</p>
+    }
+    else
+    {
+        <div class="table-responsive">
+            <table class="table table-sm align-middle mb-0">
+                <thead><tr><th>Fecha</th><th>Visitante</th><th>Placa</th><th>Ingreso</th><th>Salida</th><th>Autorizada por</th><th>Estado</th></tr></thead>
+                <tbody>
+                    @foreach (var v in historial)
+                    {
+                        <tr>
+                            <td>@v.FechaEsperada.ToString("dd/MM/yyyy")</td>
+                            <td>@v.NombreVisitante</td>
+                            <td>@(v.PlacaVehiculo ?? "—")</td>
+                            <td>@(v.HoraIngreso?.ToString("dd/MM HH:mm") ?? "—")</td>
+                            <td>@(v.HoraSalida?.ToString("dd/MM HH:mm") ?? "—")</td>
+                            <td>@v.AutorizadaPorResidente?.NombreCompleto</td>
+                            <td><span class="@Formato.ClaseEstado(v.Estado)">@(v.Estado == EstadoVisita.Autorizada ? "No asistió" : v.Estado.ToString())</span></td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    }
+</div>

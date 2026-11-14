@@ -1,0 +1,19 @@
+@model AreaComunalFormViewModel
+@{
+    ViewData["Title"] = "Registrar área comunal";
+}
+<div class="migas"><a asp-action="Index">Áreas comunales</a> › Registrar</div>
+<h1 class="h3 mb-3">Registrar área comunal</h1>
+<div class="tarjeta-form">
+    <form asp-action="Create" method="post">
+        <partial name="_Formulario" model="Model" />
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">Guardar área</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

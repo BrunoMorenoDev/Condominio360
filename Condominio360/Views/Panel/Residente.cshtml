@@ -1,0 +1,104 @@
+@model PanelResidenteViewModel
+@{
+    ViewData["Title"] = "Inicio";
+    var ec = Model.EstadoCuenta;
+    var u = Model.Residente.Unidad!;
+}
+<partial name="_Alertas" />
+
+<div class="mb-4">
+    <h1 class="h3 mb-1">Hola, @Model.NombreUsuario</h1>
+    <p class="text-secondary mb-0">
+        Unidad <span class="placa">@u.Codigo</span> · @u.Tipo · Torre @u.Torre ·
+        Así está tu cuenta hoy, @DateTime.Today.ToString("dd/MM/yyyy").
+    </p>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-3">
+        <div class="kpi">
+            <div class="kpi-etiqueta">Saldo total</div>
+            <div class="kpi-valor">@ec.SaldoTotal.ToString("C")</div>
+            <div class="kpi-nota">capital + recargos</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi">
+            <div class="kpi-etiqueta">Saldo vencido</div>
+            <div class="kpi-valor @(ec.SaldoVencido > 0 ? "negativo" : "")">@ec.SaldoVencido.ToString("C")</div>
+            <div class="kpi-nota">@ec.CuotasVencidas cuota(s) vencida(s)</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi">
+            <div class="kpi-etiqueta">Clasificación</div>
+            <div class="kpi-valor"><span class="@Formato.ClaseClasificacion(ec.Clasificacion)">@Formato.Texto(ec.Clasificacion)</span></div>
+            <div class="kpi-nota">@(Model.PuedeReservar ? "Puedes reservar áreas comunales" : "No puedes reservar hasta regularizar")</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="kpi">
+            <div class="kpi-etiqueta">Pagos por verificar</div>
+            <div class="kpi-valor">@Model.PagosPorVerificar</div>
+            <div class="kpi-nota">reportados a la administración</div>
+        </div>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2 mb-4">
+    <a asp-controller="MiCuenta" asp-action="Index" class="btn btn-primary"><i class="bi bi-receipt"></i> Mi estado de cuenta</a>
+    <a asp-controller="MiCuenta" asp-action="ReportarPago" class="btn btn-laton"><i class="bi bi-upload"></i> Reportar pago</a>
+    @if (Model.PuedeReservar)
+    {
+        <a asp-controller="MisReservas" asp-action="Solicitar" class="btn btn-outline-primary"><i class="bi bi-calendar-plus"></i> Reservar área</a>
+    }
+    <a asp-controller="MisVisitas" asp-action="Autorizar" class="btn btn-outline-primary"><i class="bi bi-person-check"></i> Autorizar visita</a>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-6">
+        <div class="seccion">
+            <h2>Próximas reservas</h2>
+            @if (!Model.ProximasReservas.Any())
+            {
+                <p class="text-secondary mb-0">No tienes reservas próximas.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var r in Model.ProximasReservas)
+                    {
+                        <li class="py-1">
+                            <strong>@r.Area?.Nombre</strong> · @r.Fecha.ToString("dd/MM/yyyy") @r.HoraInicio.ToString("HH:mm")–@r.HoraFin.ToString("HH:mm")
+                            <span class="@Formato.ClaseEstado(r.Estado)">@r.Estado</span>
+                        </li>
+                    }
+                </ul>
+            }
+            <a asp-controller="MisReservas" asp-action="Index" class="btn btn-sm btn-link px-0 mt-2">Ver todas mis reservas</a>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="seccion">
+            <h2>Próximas visitas</h2>
+            @if (!Model.ProximasVisitas.Any())
+            {
+                <p class="text-secondary mb-0">No tienes visitas autorizadas pendientes.</p>
+            }
+            else
+            {
+                <ul class="list-unstyled mb-0">
+                    @foreach (var v in Model.ProximasVisitas)
+                    {
+                        <li class="py-1">
+                            <strong>@v.NombreVisitante</strong> · @v.FechaEsperada.ToString("dd/MM/yyyy")
+                            @if (v.PlacaVehiculo is not null) { <span class="texto-pequeno">· @v.PlacaVehiculo</span> }
+                            <span class="@Formato.ClaseEstado(v.Estado)">@v.Estado</span>
+                        </li>
+                    }
+                </ul>
+            }
+            <a asp-controller="MisVisitas" asp-action="Index" class="btn btn-sm btn-link px-0 mt-2">Ver todas mis visitas</a>
+        </div>
+    </div>
+</div>

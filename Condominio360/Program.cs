@@ -35,6 +35,9 @@ builder.Services.AddDbContext<AppDbContext>(options =>
 
 // ---------- Servicios del Core ----------
 builder.Services.AddScoped<CobranzaService>();
+builder.Services.AddScoped<ReglasPago>();
+builder.Services.AddScoped<ComprobanteService>();
+builder.Services.AddScoped<ReservasService>();
 
 // ---------- Hash de contraseñas (PBKDF2 de ASP.NET Core Identity) ----------
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
@@ -53,6 +56,8 @@ builder.Services
         options.Cookie.HttpOnly = true;                   // no accesible desde JavaScript
         options.Cookie.SameSite = SameSiteMode.Lax;
         options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        // Usuario desactivado o con rol cambiado → la sesión se cierra en la siguiente solicitud
+        options.Events.OnValidatePrincipal = ValidadorSesion.ValidarAsync;
     });
 
 // ---------- Autorización: seguro por defecto ----------

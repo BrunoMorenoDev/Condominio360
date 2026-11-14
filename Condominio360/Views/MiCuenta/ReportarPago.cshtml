@@ -1,0 +1,96 @@
+@model ReportarPagoViewModel
+@{
+    ViewData["Title"] = "Reportar pago";
+}
+<div class="migas"><a asp-action="Index">Mi cuenta</a> › Reportar pago</div>
+<h1 class="h3 mb-1">Reportar un pago</h1>
+<p class="text-secondary">
+    Registre la transferencia o el depósito que realizó y adjunte el comprobante. El pago quedará
+    <strong>por verificar</strong> hasta que la administración lo revise.
+</p>
+
+<div class="row g-3 mb-3">
+    <div class="col-sm-4">
+        <div class="kpi">
+            <div class="kpi-etiqueta">Saldo de @Model.Unidad?.Codigo</div>
+            <div class="kpi-valor">@Model.SaldoTotal.ToString("C")</div>
+            <div class="kpi-nota">capital + recargos a hoy</div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="kpi">
+            <div class="kpi-etiqueta">Pagos por verificar</div>
+            <div class="kpi-valor">@Model.PorVerificar.ToString("C")</div>
+            <div class="kpi-nota">reportados y aún no revisados</div>
+        </div>
+    </div>
+    <div class="col-sm-4">
+        <div class="kpi">
+            <div class="kpi-etiqueta">Máximo a reportar</div>
+            <div class="kpi-valor">@Model.Disponible.ToString("C")</div>
+            <div class="kpi-nota">saldo − pagos por verificar</div>
+        </div>
+    </div>
+</div>
+
+@if (Model.Disponible <= 0)
+{
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i>
+        @(Model.SaldoTotal <= 0
+            ? "Su unidad no tiene saldo pendiente. No hay pagos por reportar."
+            : "Los pagos que ya reportó cubren su saldo. Espere a que la administración los verifique.")
+    </div>
+    <a asp-action="Index" class="btn btn-outline-secondary">Volver a mi estado de cuenta</a>
+}
+else
+{
+    <div class="tarjeta-form">
+        <form asp-action="ReportarPago" method="post" enctype="multipart/form-data">
+            <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+            <div class="row g-3">
+                <div class="col-sm-4">
+                    <label asp-for="FechaPago" class="form-label"></label>
+                    <input asp-for="FechaPago" class="form-control" type="date" max="@DateTime.Today.ToString("yyyy-MM-dd")" />
+                    <span asp-validation-for="FechaPago" class="text-danger small"></span>
+                </div>
+                <div class="col-sm-4">
+                    <label asp-for="Monto" class="form-label"></label>
+                    <div class="input-group">
+                        <span class="input-group-text">$</span>
+                        <input asp-for="Monto" class="form-control" type="number" step="0.01" min="0.01" max="@Model.Disponible.ToString("0.00")" />
+                    </div>
+                    <span asp-validation-for="Monto" class="text-danger small"></span>
+                </div>
+                <div class="col-sm-4">
+                    <label asp-for="Metodo" class="form-label"></label>
+                    <select asp-for="Metodo" class="form-select">
+                        <option value="@MetodoPago.Transferencia">Transferencia</option>
+                        <option value="@MetodoPago.Deposito">Depósito</option>
+                    </select>
+                    <span asp-validation-for="Metodo" class="text-danger small"></span>
+                </div>
+                <div class="col-sm-6">
+                    <label asp-for="Referencia" class="form-label"></label>
+                    <input asp-for="Referencia" class="form-control text-uppercase" placeholder="TRX-771045" autocomplete="off" />
+                    <div class="form-text">Número de la transferencia o del depósito (4 a 40 letras, números o guiones).</div>
+                    <span asp-validation-for="Referencia" class="text-danger small"></span>
+                </div>
+                <div class="col-sm-6">
+                    <label asp-for="Archivo" class="form-label"></label>
+                    <input asp-for="Archivo" class="form-control" type="file" accept=".jpg,.jpeg,.png,.pdf" required />
+                    <div class="form-text">Obligatorio. Se verifica en el servidor el tipo y el contenido del archivo.</div>
+                    <span asp-validation-for="Archivo" class="text-danger small"></span>
+                </div>
+            </div>
+            <div class="d-flex gap-2 mt-4">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Reportar pago</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+            </div>
+        </form>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,0 +1,35 @@
+@model EstadoCuentaViewModel
+@{
+    ViewData["Title"] = "Mi estado de cuenta";
+    var u = Model.Unidad!;
+}
+<div class="migas">Mi cuenta › Estado de cuenta</div>
+
+<partial name="_Alertas" />
+
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1"><span class="placa placa-grande">@u.Codigo</span> Mi estado de cuenta</h1>
+        <div class="text-secondary">
+            @u.Tipo · Torre @u.Torre · Piso @u.Piso ·
+            Responsable de pago: @(Model.Responsable?.NombreCompleto ?? "sin responsable registrado")
+        </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 align-items-end">
+        <form asp-action="Index" method="get" class="d-flex gap-2 align-items-end">
+            <div>
+                <label class="form-label texto-pequeno mb-1" for="corte">Fecha de corte</label>
+                <input id="corte" name="corte" type="date" class="form-control form-control-sm" value="@Model.Corte.ToString("yyyy-MM-dd")" />
+            </div>
+            <button type="submit" class="btn btn-sm btn-outline-primary">Consultar</button>
+        </form>
+        <a asp-action="ReportarPago" class="btn btn-laton"><i class="bi bi-upload"></i> Reportar pago</a>
+    </div>
+</div>
+
+<partial name="_EstadoCuentaCuerpo" model="Model" />
+
+<p class="texto-pequeno">
+    Los pagos que reporta quedan <strong>por verificar</strong>. Cuando la administración los aprueba se aplican
+    automáticamente a sus cuotas más antiguas: primero al recargo y luego al capital.
+</p>

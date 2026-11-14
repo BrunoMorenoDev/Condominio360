@@ -56,7 +56,8 @@ Proyecto de la materia **Ingeniería Web** (Universidad de las Américas – UDL
 |---|---|---|
 | 1 | CRUD + Login con MVC | ✅ |
 | 2 | Documento de especificación funcional (Core, alcance, diagramas) | ✅ |
-| **3** | **Administración MVC del Core sobre base de datos real (Supabase), desplegada en Azure** | ✅ |
+| 3 | Administración MVC del Core sobre base de datos real (Supabase), desplegada en Azure | ✅ |
+| **4** | **Proyecto completo: módulos de Residente y Guardia, usuarios, áreas comunales, reservas y visitas** | ✅ |
 
 Requisitos de la entrega 3:
 
@@ -105,12 +106,40 @@ Las reglas están en el **Modelo** (`Models/Cuota.cs`) y en el servicio del Core
 - 📄 **Estado de cuenta** de una unidad a una fecha de corte: saldo total, saldo vencido, recargos, clasificación, cuotas e historial de pagos con su distribución.
 - 📉 **Reporte de morosidad** con indicadores (índice de morosidad, cartera vencida, tasa de recaudación, unidades al día), filtros por fecha de corte, torre, clasificación y búsqueda; **exportación CSV**.
 
+**Comunidad y usuarios (rol Administrador)**
+
+- 👤 **Usuarios**: consultar con filtros, crear, modificar y **desactivar** (no se eliminan). Rol asignado y, para el rol Residente, **vínculo con su registro de residente** (Torre → Unidad → Residente en cascada). Política de contraseñas y protección para no dejar el sistema sin administradores.
+- 🏊 **Áreas comunales**: CRUD con nombre, capacidad, horario y costo de uso; un área con reservas no se elimina, se desactiva.
+- 📆 **Reservas**: bandeja de solicitudes con la clasificación de morosidad de cada unidad; **aprobar** (revalidando cruces y morosidad) o **rechazar**.
+- 🚪 **Visitas**: consulta del registro de la garita.
+
+**Core desde el lado del residente (rol Residente)**
+
+- 📄 **Mi estado de cuenta**: solo de *su* unidad, a cualquier fecha de corte: cuotas, recargos, saldo total y vencido, clasificación e historial de pagos con su distribución.
+- 📤 **Reportar pago** (transferencia o depósito) con monto, fecha, referencia y **comprobante obligatorio**. Queda *por verificar* hasta que la administración lo apruebe; puede anular su reporte mientras no se verifique.
+- 📆 **Reservas**: consulta de disponibilidad del área por fecha, solicitud y cancelación. **Bloqueadas si la unidad es Moroso o Moroso crítico** (regla d.2 del Core).
+- 🧍 **Visitas**: autorizar visitas (nombre, cédula, placa opcional, fecha esperada) y cancelarlas antes de que ingresen.
+
+**Garita (rol Guardia)**
+
+- 🛂 Visitas autorizadas del día con búsqueda por nombre, cédula, placa o unidad; **registrar ingreso y salida**; aviso de visitas que entraron otro día y no registran salida.
+
 **Gestión base**
 
-- 🔐 Login con roles (Administrador, Residente, Guardia) y usuarios activos/inactivos.
+- 🔐 Login con roles (Administrador, Residente, Guardia) y usuarios activos/inactivos; la sesión se cierra en la siguiente solicitud si el usuario es desactivado o cambia de rol.
 - 🏠 CRUD de unidades (con estado activa/inactiva; no se eliminan unidades con historial de cobranza).
 - 👥 CRUD de residentes con búsqueda, validación de cédula y **un solo responsable de pago por unidad**.
-- 📊 Panel con indicadores del condominio y de la cobranza.
+- 📊 Panel por rol: indicadores del condominio (administrador), resumen de la unidad (residente) o garita (guardia).
+
+## 👤 Roles y permisos
+
+| Rol | Acceso |
+|---|---|
+| **Administrador** | Panel, unidades, residentes, todo el módulo de cobranza, usuarios, áreas comunales, reservas y registro de visitas |
+| **Residente** | Inicio con el resumen de su unidad, mi estado de cuenta, reportar pagos, mis reservas y mis visitas — **solo de su propia unidad** |
+| **Guardia** | Garita: visitas del día, registro de ingreso y salida |
+
+El rol viaja como *claim* en la cookie de sesión. Cada controlador declara su rol (`[Authorize(Roles = "Administrador")]`, `Residente`, `Guardia,Administrador`); un usuario que abre una función de otro rol recibe `/Account/AccessDenied`. Los controladores del residente heredan de `ResidenteBaseController`, que obtiene la unidad **desde el usuario de la sesión**, nunca desde la URL ni el formulario.
 
 ## 👤 Roles y permisos
 
@@ -154,17 +183,20 @@ Reglas que también protege la base de datos (defensa en profundidad): una cuota
 
 ## 🛡️ Validaciones en back-end
 
-El dato sensible del Core es **el dinero**. Estas reglas se ejecutan en el servidor (`PagosController.ValidarAsync` y `CobranzaService`) **antes de grabar**, aunque el navegador tenga JavaScript desactivado o se manipule el formulario:
+El dato sensible del Core es **el dinero**. Estas reglas se ejecutan en el servidor (`Services/ReglasPago.cs`, compartido por el registro en administración y el reporte del residente, y `CobranzaService`) **antes de grabar**, aunque el navegador tenga JavaScript desactivado o se manipule el formulario:
 
 | # | Validación | Archivo |
 |---|---|---|
-| 1 | El **monto no puede superar el saldo total de la unidad** a la fecha del pago (calculado en el servidor con recargos); máximo 2 decimales; mayor que 0 | `Controllers/PagosController.cs`, `Services/CobranzaService.cs` |
-| 2 | **Referencia bancaria** obligatoria para transferencia/depósito, formato `A-Z 0-9 -` y **sin duplicados** (evita registrar dos veces la misma transferencia) | `Controllers/PagosController.cs` |
-| 3 | La unidad existe y pertenece a la torre; el residente que paga pertenece a esa unidad (no se confía en el valor del dropdown) | `Controllers/PagosController.cs` |
-| 4 | Fecha de pago no futura ni con más de un año | `Controllers/PagosController.cs` |
-| 5 | Comprobante: solo JPG/PNG/PDF ≤ 2 MB, verificando la **firma del archivo** (magic bytes) | `Controllers/PagosController.cs` |
+| 1 | El **monto no puede superar el saldo total de la unidad** a la fecha del pago (calculado en el servidor con recargos); máximo 2 decimales; mayor que 0. En el reporte del residente además se **descuentan los pagos que ya reportó y siguen por verificar** | `Services/ReglasPago.cs`, `Services/CobranzaService.cs` |
+| 2 | **Referencia bancaria** obligatoria para transferencia/depósito, formato `A-Z 0-9 -` y **sin duplicados** (evita registrar dos veces la misma transferencia) | `Services/ReglasPago.cs` |
+| 3 | La unidad existe y pertenece a la torre; el residente que paga pertenece a esa unidad (no se confía en el valor del dropdown). El residente siempre reporta para **su** unidad | `Controllers/PagosController.cs`, `Controllers/MiCuentaController.cs` |
+| 4 | Fecha de pago no futura ni con más de un año | `Services/ReglasPago.cs` |
+| 5 | Comprobante: solo JPG/PNG/PDF ≤ 2 MB, verificando la **firma del archivo** (magic bytes); obligatorio en el reporte del residente | `Services/ComprobanteService.cs` |
 | 6 | Rechazo con motivo obligatorio; solo se verifican/rechazan pagos *por verificar* | `Services/CobranzaService.cs` |
-| 7 | **Cédula ecuatoriana** validada con el algoritmo **módulo 10** del Registro Civil (provincia, tercer dígito y dígito verificador) y sin duplicados | `Services/ValidadorCedula.cs`, `Controllers/ResidentesController.cs` |
+| 7 | **Cédula ecuatoriana** validada con el algoritmo **módulo 10** del Registro Civil (provincia, tercer dígito y dígito verificador): residentes (sin duplicados) y visitantes | `Services/ValidadorCedula.cs`, `Controllers/ResidentesController.cs`, `Controllers/MisVisitasController.cs` |
+| 8 | **Reservas**: la unidad no puede ser Moroso/Moroso crítico, área activa, dentro del horario del área, máximo 8 h, hasta 60 días de anticipación y **sin cruces** con otras reservas; al aprobar se vuelve a validar | `Services/ReservasService.cs` |
+| 9 | **Visitas**: fecha esperada entre hoy y 30 días, placa con formato ecuatoriano (`ABC-1234` / `AB-123C`), sin autorizaciones duplicadas; ingreso solo el día autorizado y salida solo después del ingreso | `Controllers/MisVisitasController.cs`, `Controllers/GaritaController.cs`, `Services/ValidadorPlaca.cs` |
+| 10 | **Usuarios**: nombre único, contraseña de 8–64 caracteres con mayúsculas, minúsculas, números y símbolo, el rol Residente exige un residente sin otra cuenta y siempre queda al menos un administrador activo | `Controllers/UsuariosController.cs` |
 
 **Para probar:**
 
@@ -182,7 +214,7 @@ Torre / bloque  ──►  Unidad  ──►  Residente que paga
 
 - Endpoints JSON: `GET /Catalogos/Unidades?torre=A`, `GET /Catalogos/Residentes?unidadId=4`, `GET /Catalogos/SaldoUnidad?unidadId=4`.
 - Script genérico: `wwwroot/js/cascada.js` (atributos `data-cascada-destino` y `data-cascada-url`).
-- Usado en: registro/edición de pagos, registro/edición de residentes y estado de cuenta.
+- Usado en: registro/edición de pagos, registro/edición de residentes, estado de cuenta y vínculo usuario–residente.
 
 ## 🛠️ Tecnologías utilizadas
 
@@ -256,6 +288,8 @@ docker build -t condominio360 .
 docker run -p 8080:8080 -e ConnectionStrings__DefaultConnection="<cadena>" condominio360
 ```
 
+> **Zona horaria:** la app usa la hora del servidor para la garita, las reservas y las cuotas. En Azure App Service (Linux) agregue la variable `TZ=America/Guayaquil` (en Windows: `WEBSITE_TIME_ZONE=SA Pacific Standard Time`) para que las horas coincidan con Ecuador.
+
 > Los comprobantes de pago se guardan en `App_Data/comprobantes` del servidor. En el despliegue, los comprobantes de los datos de ejemplo no existen como archivo; los que se suban desde la app sí se guardan.
 
 ## 🔑 Credenciales de prueba
@@ -263,9 +297,9 @@ docker run -p 8080:8080 -e ConnectionStrings__DefaultConnection="<cadena>" condo
 | Usuario | Contraseña | Rol |
 |---|---|---|
 | `admin` | `Admin123*` | Administrador (acceso completo al Core) |
-| `cmena` | `Residente123*` | Residente (módulo en la siguiente entrega) |
+| `cmena` | `Residente123*` | Residente (unidad A-202) |
 | `atorres` | `Residente123*` | Residente |
-| `guardia` | `Guardia123*` | Guardia |
+| `guardia` | `Guardia123*` | Guardia (garita) |
 
 Las contraseñas se guardan **hasheadas** (PBKDF2), nunca en texto plano.
 
@@ -291,7 +325,12 @@ Condominio360/
     │   └── Enums.cs                  # EstadoCuota, EstadoPago, MetodoPago, ClasificacionMorosidad…
     ├── Services/
     │   ├── CobranzaService.cs        # Core: generar cuotas, saldo, distribución, morosidad, indicadores
-    │   └── ValidadorCedula.cs        # Cédula ecuatoriana (módulo 10)
+    │   ├── ReglasPago.cs             # Validaciones de back-end del pago (monto, fecha, referencia)
+    │   ├── ComprobanteService.cs     # Guardado y validación de comprobantes (fuera de wwwroot)
+    │   ├── ReservasService.cs        # Horarios, cruces y bloqueo por morosidad (regla d.2)
+    │   ├── ValidadorCedula.cs        # Cédula ecuatoriana (módulo 10)
+    │   ├── ValidadorPlaca.cs         # Placas vehiculares ecuatorianas
+    │   └── ValidadorSesion.cs        # Revalida la cookie (usuario activo, rol y vínculo)
     ├── Data/
     │   ├── AppDbContext.cs           # Mapeo a tablas snake_case de PostgreSQL
     │   └── DbSeeder.cs               # Roles, admin y configuración mínima
@@ -302,9 +341,13 @@ Condominio360/
     │   ├── UnidadesController.cs  ResidentesController.cs
     │   ├── ConfiguracionCobroController.cs  CuotasController.cs  PagosController.cs
     │   ├── EstadoCuentaController.cs  MorosidadController.cs
+    │   ├── UsuariosController.cs  AreasComunalesController.cs  ReservasController.cs
+    │   ├── ResidenteBaseController.cs  # Base del rol Residente: limita todo a su unidad
+    │   ├── MiCuentaController.cs  MisReservasController.cs  MisVisitasController.cs
+    │   ├── GaritaController.cs       # Rol Guardia: ingreso y salida de visitas
     │   └── CatalogosController.cs    # JSON para los dropdowns en cascada
     ├── Views/                        # VISTA: Razor (.cshtml)
-    └── wwwroot/  (css/site.css, js/cascada.js, js/pago-form.js)
+    └── wwwroot/  (css/site.css, js/cascada.js, js/pago-form.js, js/reserva-form.js, js/usuario-form.js)
 ```
 
 **Responsabilidades:** el **controlador** recibe la petición y valida la entrada; el **servicio** (`CobranzaService`) aplica las reglas del negocio; el **modelo** (`Cuota`) calcula recargo, saldo y estado; `AppDbContext` guarda en PostgreSQL; la **vista** Razor muestra el resultado.
@@ -316,7 +359,9 @@ Condominio360/
 | Medida | Implementación |
 |---|---|
 | Rutas protegidas por defecto | `FallbackPolicy`: toda URL exige sesión salvo `Home` y `Account` |
-| Autorización por rol | Módulos de administración con `[Authorize(Roles = "Administrador")]` |
+| Autorización por rol | Cada controlador declara su rol (`Administrador`, `Residente`, `Guardia`) |
+| Aislamiento por unidad | El residente solo ve y modifica datos de su unidad: la unidad sale del usuario de la sesión, no de la URL |
+| Revalidación de sesión | `OnValidatePrincipal` cierra la sesión si el usuario fue desactivado o cambió de rol |
 | Contraseñas | Hash PBKDF2 (`PasswordHasher<Usuario>`); usuarios inactivos no inician sesión |
 | Cookie de sesión | `HttpOnly`, `SameSite=Lax`, 30 min con renovación por actividad (7 días con *Recordarme*) |
 | Open redirect | `Url.IsLocalUrl()` antes de redirigir al `ReturnUrl` |
@@ -325,7 +370,7 @@ Condominio360/
 | CSRF | `[ValidateAntiForgeryToken]` en todos los POST |
 | Overposting | `[Bind]` / ViewModels con campos explícitos |
 | Caché tras logout | `ResponseCache(NoStore = true)` en páginas privadas |
-| Comprobantes | Guardados fuera de `wwwroot` con nombre GUID; solo se descargan con sesión de administrador |
+| Comprobantes | Guardados fuera de `wwwroot` con nombre GUID; los descarga el administrador o el residente dueño del pago |
 | CSV | Neutraliza fórmulas (`=`, `+`, `-`, `@`) al exportar |
 
 ## 🗺️ Rutas de la aplicación
@@ -333,7 +378,7 @@ Condominio360/
 | Ruta | Acceso | Descripción |
 |---|---|---|
 | `/` · `/Account/Login` | Público | Inicio y login |
-| `/Panel` | 🔒 Sesión | Indicadores (administrador) o aviso de módulo en desarrollo (otros roles) |
+| `/Panel` | 🔒 Sesión | Indicadores (administrador), resumen de la unidad (residente) o redirección a la garita (guardia) |
 | `/Unidades` · `/Residentes` | 🔒 Admin | CRUD |
 | `/ConfiguracionCobro` | 🔒 Admin | Parámetros D, G, t e historial |
 | `/Cuotas` · `/Cuotas/Generar` · `/Cuotas/Details/{id}` | 🔒 Admin | Cuotas por periodo |
@@ -341,6 +386,13 @@ Condominio360/
 | `/EstadoCuenta?unidadId={id}&corte=AAAA-MM-DD` | 🔒 Admin | Estado de cuenta de una unidad |
 | `/Morosidad` · `/Morosidad/Exportar` | 🔒 Admin | Reporte de morosidad y CSV |
 | `/Catalogos/Unidades` · `/Catalogos/Residentes` · `/Catalogos/SaldoUnidad` | 🔒 Admin | JSON para dropdowns en cascada |
+| `/Usuarios` · `/Usuarios/Create` · `/Usuarios/Edit/{id}` | 🔒 Admin | Gestión de usuarios y roles |
+| `/AreasComunales` | 🔒 Admin | CRUD de áreas comunales |
+| `/Reservas` | 🔒 Admin | Aprobar o rechazar reservas |
+| `/MiCuenta` · `/MiCuenta/ReportarPago` | 🔒 Residente | Estado de cuenta propio y reporte de pagos |
+| `/MisReservas` · `/MisReservas/Solicitar` | 🔒 Residente | Reservas de áreas comunales |
+| `/MisVisitas` · `/MisVisitas/Autorizar` | 🔒 Residente | Autorización de visitas |
+| `/Garita` | 🔒 Guardia, Admin | Visitas del día, ingreso y salida |
 
 ## 🌿 Flujo de trabajo en Git
 
@@ -354,11 +406,9 @@ Los mensajes de commit siguen **[Conventional Commits 1.0.0](https://www.convent
 
 ## 🔭 Trabajo futuro
 
-- **Módulo Residente:** consultar su estado de cuenta, reportar pagos con comprobante, reservar áreas comunales y autorizar visitas.
-- **Módulo Guardia:** registrar ingreso y salida de visitas en garita.
-- Administración de usuarios y áreas comunales desde la interfaz.
-
-Las tablas `areas_comunales`, `reservas` y `visitas` ya existen en la base de datos.
+- Notificaciones por correo al residente cuando su pago o su reserva se aprueban o rechazan.
+- Guardar los comprobantes en Azure Blob Storage para que persistan entre despliegues.
+- Pasarela de pago en línea y conciliación bancaria automática.
 
 ## 👨‍💻 Autores
 

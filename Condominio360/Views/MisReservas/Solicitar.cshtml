@@ -1,0 +1,82 @@
+@model SolicitarReservaViewModel
+@{
+    ViewData["Title"] = "Solicitar reserva";
+}
+<div class="migas"><a asp-action="Index">Mis reservas</a> › Solicitar</div>
+<h1 class="h3 mb-1">Solicitar reserva</h1>
+<p class="text-secondary">Elija el área, la fecha y un horario libre. La administración aprobará o rechazará la solicitud.</p>
+
+@if (!Model.PuedeReservar)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-lock"></i>
+        Su unidad está clasificada como <span class="@Formato.ClaseClasificacion(Model.Clasificacion)">@Formato.Texto(Model.Clasificacion)</span>.
+        Los residentes de unidades Moroso o Moroso crítico no pueden reservar áreas comunales hasta regularizar su deuda.
+    </div>
+    <div class="d-flex gap-2">
+        <a asp-controller="MiCuenta" asp-action="Index" class="btn btn-primary">Ver mi estado de cuenta</a>
+        <a asp-controller="MiCuenta" asp-action="ReportarPago" class="btn btn-outline-primary">Reportar un pago</a>
+    </div>
+}
+else if (!Model.DetalleAreas.Any())
+{
+    <div class="vacio"><p class="mb-0">No hay áreas comunales disponibles para reservar.</p></div>
+}
+else
+{
+    <div class="row g-3">
+        <div class="col-lg-7">
+            <div class="tarjeta-form">
+                <form asp-action="Solicitar" method="post">
+                    <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+                    <div class="row g-3">
+                        <div class="col-sm-7">
+                            <label asp-for="AreaId" class="form-label"></label>
+                            <select asp-for="AreaId" asp-items="Model.Areas" class="form-select">
+                                <option value="0">Seleccione…</option>
+                            </select>
+                            <span asp-validation-for="AreaId" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-5">
+                            <label asp-for="Fecha" class="form-label"></label>
+                            <input asp-for="Fecha" class="form-control" type="date"
+                                   min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                                   max="@DateTime.Today.AddDays(Condominio360.Services.ReservasService.DiasMaximoAnticipacion).ToString("yyyy-MM-dd")" />
+                            <span asp-validation-for="Fecha" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="HoraInicio" class="form-label"></label>
+                            <input asp-for="HoraInicio" class="form-control" type="time" asp-format="{0:HH:mm}" step="900" />
+                            <span asp-validation-for="HoraInicio" class="text-danger small"></span>
+                        </div>
+                        <div class="col-sm-6">
+                            <label asp-for="HoraFin" class="form-label"></label>
+                            <input asp-for="HoraFin" class="form-control" type="time" asp-format="{0:HH:mm}" step="900" />
+                            <span asp-validation-for="HoraFin" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="d-flex gap-2 mt-4">
+                        <button type="submit" class="btn btn-primary">Solicitar reserva</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <div class="col-lg-5">
+            <div class="seccion" id="disponibilidad" data-url="@Url.Action("Disponibilidad")">
+                <h2>Disponibilidad</h2>
+                <p class="text-secondary mb-0" id="disp-texto">Elija un área y una fecha para ver los horarios ocupados.</p>
+                <ul class="list-unstyled mb-0 mt-2" id="disp-lista"></ul>
+            </div>
+            <div class="aviso-regla">
+                Máximo @Condominio360.Services.ReservasService.HorasMaximasPorReserva horas por reserva y hasta
+                @Condominio360.Services.ReservasService.DiasMaximoAnticipacion días de anticipación.
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script src="~/js/reserva-form.js" asp-append-version="true"></script>
+}

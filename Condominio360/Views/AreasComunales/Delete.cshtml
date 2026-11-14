@@ -1,0 +1,29 @@
+@model AreaComunal
+@{
+    ViewData["Title"] = "Eliminar área comunal";
+}
+<h1 class="h3 mb-3">Eliminar área comunal</h1>
+
+<div class="tarjeta-form">
+    @if (Model.Reservas.Any())
+    {
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+            «@Model.Nombre» tiene @Model.Reservas.Count reserva(s) registradas y no se puede eliminar.
+            Edítela y desmarque <strong>Área activa</strong> para que los residentes ya no puedan reservarla.
+        </div>
+        <div class="d-flex gap-2">
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar área</a>
+            <a asp-action="Index" class="btn btn-outline-secondary">Volver</a>
+        </div>
+    }
+    else
+    {
+        <p>¿Seguro que desea eliminar <strong>@Model.Nombre</strong>? Esta acción no se puede deshacer.</p>
+        <form asp-action="Delete" method="post" class="d-flex gap-2">
+            <input type="hidden" name="id" value="@Model.Id" />
+            <button type="submit" class="btn btn-danger">Eliminar área</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </form>
+    }
+</div>

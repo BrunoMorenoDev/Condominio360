@@ -1,0 +1,108 @@
+@model GaritaViewModel
+@{
+    ViewData["Title"] = "Garita";
+}
+<div class="migas">Garita › Control de visitas</div>
+<div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+    <div>
+        <h1 class="h3 mb-1">Control de visitas</h1>
+        <div class="text-secondary">@(Model.EsHoy ? "Visitas autorizadas para hoy" : "Visitas del") @Model.Fecha.ToString("dd/MM/yyyy")</div>
+    </div>
+</div>
+
+<partial name="_Alertas" />
+
+<div class="row g-3 mb-3">
+    <div class="col-4">
+        <div class="kpi"><div class="kpi-etiqueta">Por llegar</div><div class="kpi-valor">@Model.Esperadas</div></div>
+    </div>
+    <div class="col-4">
+        <div class="kpi"><div class="kpi-etiqueta">Dentro del condominio</div><div class="kpi-valor">@Model.Dentro</div></div>
+    </div>
+    <div class="col-4">
+        <div class="kpi"><div class="kpi-etiqueta">Finalizadas</div><div class="kpi-valor">@Model.Finalizadas</div></div>
+    </div>
+</div>
+
+<form asp-action="Index" method="get" class="filtros row g-2 align-items-end">
+    <div class="col-sm-4 col-md-3">
+        <label class="form-label" for="fecha">Fecha</label>
+        <input id="fecha" name="fecha" type="date" class="form-control" value="@Model.Fecha.ToString("yyyy-MM-dd")" />
+    </div>
+    <div class="col-sm-8 col-md-6">
+        <label class="form-label" for="buscar">Buscar</label>
+        <input id="buscar" name="buscar" class="form-control" value="@Model.Buscar" placeholder="Nombre, cédula, placa o unidad (A-101)" />
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">Consultar</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Hoy</a>
+    </div>
+</form>
+
+@if (Model.DentroDeDiasAnteriores.Any())
+{
+    <div class="seccion">
+        <h2><i class="bi bi-exclamation-circle text-warning"></i> Ingresaron otro día y no registran salida</h2>
+        <table class="table table-sm align-middle mb-0">
+            <tbody>
+                @foreach (var v in Model.DentroDeDiasAnteriores)
+                {
+                    <tr>
+                        <td>@v.NombreVisitante <span class="texto-pequeno">· @v.CedulaVisitante</span></td>
+                        <td><span class="placa">@v.Unidad?.Codigo</span></td>
+                        <td>Ingreso: @v.HoraIngreso?.ToString("dd/MM HH:mm")</td>
+                        <td class="text-end">
+                            <form asp-action="Salida" asp-route-id="@v.Id" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-right"></i> Registrar salida</button>
+                            </form>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@if (!Model.Visitas.Any())
+{
+    <div class="vacio"><p class="mb-0">No hay visitas autorizadas para esta fecha@(string.IsNullOrEmpty(Model.Buscar) ? "" : " con ese criterio").</p></div>
+}
+else
+{
+    <div class="table-responsive tabla-caja">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr><th>Visitante</th><th>Cédula</th><th>Placa</th><th>Unidad</th><th>Autorizada por</th><th>Ingreso</th><th>Salida</th><th>Estado</th><th class="text-end">Acción</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var v in Model.Visitas)
+                {
+                    <tr>
+                        <td><strong>@v.NombreVisitante</strong></td>
+                        <td>@v.CedulaVisitante</td>
+                        <td>@(v.PlacaVehiculo ?? "—")</td>
+                        <td><span class="placa">@v.Unidad?.Codigo</span></td>
+                        <td>@v.AutorizadaPorResidente?.NombreCompleto</td>
+                        <td>@(v.HoraIngreso?.ToString("HH:mm") ?? "—")</td>
+                        <td>@(v.HoraSalida?.ToString("HH:mm") ?? "—")</td>
+                        <td><span class="@Formato.ClaseEstado(v.Estado)">@v.Estado</span></td>
+                        <td class="text-end text-nowrap">
+                            @if (v.Estado == EstadoVisita.Autorizada && Model.EsHoy)
+                            {
+                                <form asp-action="Ingreso" asp-route-id="@v.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-box-arrow-in-right"></i> Ingreso</button>
+                                </form>
+                            }
+                            else if (v.Estado == EstadoVisita.Ingresada)
+                            {
+                                <form asp-action="Salida" asp-route-id="@v.Id" method="post" class="d-inline">
+                                    <button type="submit" class="btn btn-sm btn-outline-primary"><i class="bi bi-box-arrow-right"></i> Salida</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

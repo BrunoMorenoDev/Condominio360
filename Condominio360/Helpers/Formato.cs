@@ -38,6 +38,22 @@ public static class Formato
         _ => "estado estado-pend"
     };
 
+    public static string ClaseEstado(EstadoReserva estado) => estado switch
+    {
+        EstadoReserva.Aprobada => "estado estado-ok",
+        EstadoReserva.Rechazada => "estado estado-mal",
+        EstadoReserva.Cancelada => "estado estado-neutro",
+        _ => "estado estado-pend"
+    };
+
+    public static string ClaseEstado(EstadoVisita estado) => estado switch
+    {
+        EstadoVisita.Ingresada => "estado estado-info",
+        EstadoVisita.Finalizada => "estado estado-ok",
+        EstadoVisita.Cancelada => "estado estado-neutro",
+        _ => "estado estado-pend"
+    };
+
     public static string ClaseClasificacion(ClasificacionMorosidad c) => c switch
     {
         ClasificacionMorosidad.AlDia => "estado estado-ok",

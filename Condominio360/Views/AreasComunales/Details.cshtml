@@ -1,0 +1,56 @@
+@model AreaComunal
+@{
+    ViewData["Title"] = Model.Nombre;
+    var proximas = ViewData["Proximas"] as List<Reserva> ?? new();
+}
+<div class="migas"><a asp-action="Index">Áreas comunales</a> › @Model.Nombre</div>
+<h1 class="h3 mb-3">@Model.Nombre
+    @if (Model.Activa) { <span class="estado estado-ok align-middle">Activa</span> }
+    else { <span class="estado estado-neutro align-middle">Inactiva</span> }
+</h1>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="seccion">
+            <h2>Datos del área</h2>
+            <dl class="row mb-0">
+                <dt class="col-sm-5">Descripción</dt><dd class="col-sm-7">@(Model.Descripcion ?? "—")</dd>
+                <dt class="col-sm-5">Capacidad</dt><dd class="col-sm-7">@Model.Capacidad personas</dd>
+                <dt class="col-sm-5">Horario</dt><dd class="col-sm-7">@Model.HoraApertura.ToString("HH:mm") – @Model.HoraCierre.ToString("HH:mm")</dd>
+                <dt class="col-sm-5">Costo de uso</dt><dd class="col-sm-7 monto">@(Model.CostoUso == 0 ? "Gratis" : Model.CostoUso.ToString("C"))</dd>
+            </dl>
+        </div>
+    </div>
+    <div class="col-lg-7">
+        <div class="seccion">
+            <h2>Próximas reservas</h2>
+            @if (!proximas.Any())
+            {
+                <p class="text-secondary mb-0">No hay reservas próximas.</p>
+            }
+            else
+            {
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr><th>Fecha</th><th>Horario</th><th>Residente</th><th>Estado</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in proximas)
+                        {
+                            <tr>
+                                <td>@r.Fecha.ToString("dd/MM/yyyy")</td>
+                                <td>@r.HoraInicio.ToString("HH:mm") – @r.HoraFin.ToString("HH:mm")</td>
+                                <td>@r.Residente?.NombreCompleto <span class="placa">@r.Residente?.Unidad?.Codigo</span></td>
+                                <td><span class="@Formato.ClaseEstado(r.Estado)">@r.Estado</span></td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            }
+        </div>
+    </div>
+</div>
+
+<div class="d-flex flex-wrap gap-2">
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+    <a asp-controller="Reservas" asp-action="Index" asp-route-areaId="@Model.Id" class="btn btn-outline-primary"><i class="bi bi-calendar-check"></i> Reservas del área</a>
+    <a asp-action="Index" class="btn btn-outline-secondary">Volver a la lista</a>
+</div>

@@ -51,6 +51,24 @@ public class CobranzaService
     public static int ContarVencidas(IEnumerable<Cuota> cuotas, DateTime corte, ConfiguracionCobro cfg) =>
         cuotas.Count(c => c.EstaVencida(corte, cfg));
 
+    /// <summary>Clasificación de morosidad de una unidad a la fecha de corte.</summary>
+    public async Task<ClasificacionMorosidad> ClasificacionUnidadAsync(int unidadId, DateTime corte)
+    {
+        var cfg = await ConfiguracionVigenteAsync(corte);
+        if (cfg is null) return ClasificacionMorosidad.AlDia;
+        var cuotas = await _db.Cuotas.AsNoTracking()
+            .Where(c => c.UnidadId == unidadId && c.Estado != EstadoCuota.Anulada && c.FechaEmision <= corte.Date)
+            .ToListAsync();
+        return Clasificar(ContarVencidas(cuotas, corte, cfg));
+    }
+
+    /// <summary>
+    /// d.2: los residentes de unidades clasificadas como Moroso o Moroso crítico no pueden
+    /// reservar áreas comunales hasta regularizar su deuda.
+    /// </summary>
+    public static bool PuedeReservar(ClasificacionMorosidad clasificacion) =>
+        clasificacion is ClasificacionMorosidad.AlDia or ClasificacionMorosidad.AtrasoLeve;
+
     // ------------------------------------------------------------------
     // a. Generar las cuotas del periodo
     // ------------------------------------------------------------------

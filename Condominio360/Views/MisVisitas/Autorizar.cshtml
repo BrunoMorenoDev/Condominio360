@@ -1,0 +1,46 @@
+@model AutorizarVisitaViewModel
+@{
+    ViewData["Title"] = "Autorizar visita";
+}
+<div class="migas"><a asp-action="Index">Mis visitas</a> › Autorizar</div>
+<h1 class="h3 mb-1">Autorizar una visita</h1>
+<p class="text-secondary">El guardia verá la visita en la garita el día indicado y registrará su ingreso y salida.</p>
+
+<div class="tarjeta-form">
+    <form asp-action="Autorizar" method="post">
+        <div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+        <div class="row g-3">
+            <div class="col-sm-7">
+                <label asp-for="NombreVisitante" class="form-label"></label>
+                <input asp-for="NombreVisitante" class="form-control" autocomplete="off" />
+                <span asp-validation-for="NombreVisitante" class="text-danger small"></span>
+            </div>
+            <div class="col-sm-5">
+                <label asp-for="CedulaVisitante" class="form-label"></label>
+                <input asp-for="CedulaVisitante" class="form-control" maxlength="10" inputmode="numeric" autocomplete="off" />
+                <div class="form-text">Se valida en el servidor con el dígito verificador.</div>
+                <span asp-validation-for="CedulaVisitante" class="text-danger small"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="PlacaVehiculo" class="form-label"></label>
+                <input asp-for="PlacaVehiculo" class="form-control text-uppercase" placeholder="PBX-1234" autocomplete="off" />
+                <span asp-validation-for="PlacaVehiculo" class="text-danger small"></span>
+            </div>
+            <div class="col-sm-6">
+                <label asp-for="FechaEsperada" class="form-label"></label>
+                <input asp-for="FechaEsperada" class="form-control" type="date"
+                       min="@DateTime.Today.ToString("yyyy-MM-dd")"
+                       max="@DateTime.Today.AddDays(Condominio360.Controllers.MisVisitasController.DiasMaximoAnticipacion).ToString("yyyy-MM-dd")" />
+                <span asp-validation-for="FechaEsperada" class="text-danger small"></span>
+            </div>
+        </div>
+        <div class="d-flex gap-2 mt-4">
+            <button type="submit" class="btn btn-primary">Autorizar visita</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancelar</a>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

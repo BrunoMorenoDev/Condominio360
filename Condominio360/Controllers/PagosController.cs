@@ -1,4 +1,3 @@
-using System.Text.RegularExpressions;
 using Condominio360.Data;
 using Condominio360.Helpers;
 using Condominio360.Models;
@@ -18,21 +17,21 @@ namespace Condominio360.Controllers;
 /// </summary>
 [Authorize(Roles = Rol.Administrador)]
 [ResponseCache(NoStore = true, Location = ResponseCacheLocation.None)]
-public partial class PagosController : Controller
+public class PagosController : Controller
 {
-    private const long TamanoMaximoComprobante = 2 * 1024 * 1024;   // 2 MB
-    private static readonly string[] ExtensionesPermitidas = { ".jpg", ".jpeg", ".png", ".pdf" };
-
     private readonly AppDbContext _db;
     private readonly CobranzaService _cobranza;
-    private readonly IWebHostEnvironment _env;
+    private readonly ReglasPago _reglas;
+    private readonly ComprobanteService _comprobantes;
     private readonly ILogger<PagosController> _logger;
 
-    public PagosController(AppDbContext db, CobranzaService cobranza, IWebHostEnvironment env, ILogger<PagosController> logger)
+    public PagosController(AppDbContext db, CobranzaService cobranza, ReglasPago reglas,
+        ComprobanteService comprobantes, ILogger<PagosController> logger)
     {
         _db = db;
         _cobranza = cobranza;
-        _env = env;
+        _reglas = reglas;
+        _comprobantes = comprobantes;
         _logger = logger;
     }
 
@@ -76,17 +75,10 @@ public partial class PagosController : Controller
         var ruta = await _db.Pagos.Where(p => p.Id == id).Select(p => p.Comprobante).FirstOrDefaultAsync();
         if (string.IsNullOrEmpty(ruta)) return NotFound();
 
-        var archivo = RutaFisica(ruta);
-        if (archivo is null || !System.IO.File.Exists(archivo))
-            return NotFound("El archivo del comprobante no está disponible en este servidor.");
-
-        var tipo = Path.GetExtension(archivo).ToLowerInvariant() switch
-        {
-            ".pdf" => "application/pdf",
-            ".png" => "image/png",
-            _ => "image/jpeg"
-        };
-        return PhysicalFile(archivo, tipo);
+        var archivo = _comprobantes.Obtener(ruta);
+        return archivo is null
+            ? NotFound("El archivo del comprobante no está disponible en este servidor.")
+            : PhysicalFile(archivo.Value.Ruta, archivo.Value.Tipo);
     }
 
     // ==================================================================
@@ -140,7 +132,7 @@ public partial class PagosController : Controller
         try
         {
             if (vm.Archivo is not null)
-                pago.Comprobante = archivoGuardado = await GuardarComprobanteAsync(vm.Archivo);
+                pago.Comprobante = archivoGuardado = await _comprobantes.GuardarAsync(vm.Archivo);
 
             var resultado = await _cobranza.RegistrarPagoAdministracionAsync(pago, User.IdUsuario());
 
@@ -153,12 +145,12 @@ public partial class PagosController : Controller
         }
         catch (ReglaNegocioException ex)
         {
-            BorrarArchivo(archivoGuardado);
+            _comprobantes.Borrar(archivoGuardado);
             ModelState.AddModelError(nameof(vm.Monto), ex.Message);
         }
         catch (DbUpdateException ex)
         {
-            BorrarArchivo(archivoGuardado);
+            _comprobantes.Borrar(archivoGuardado);
             _logger.LogWarning(ex, "No se pudo registrar el pago");
             ModelState.AddModelError(string.Empty,
                 "No se pudo guardar el pago. Verifique que la referencia bancaria no esté registrada.");
@@ -229,7 +221,7 @@ public partial class PagosController : Controller
         try
         {
             if (vm.Archivo is not null)
-                archivoNuevo = await GuardarComprobanteAsync(vm.Archivo);
+                archivoNuevo = await _comprobantes.GuardarAsync(vm.Archivo);
 
             var anterior = pago.Comprobante;
             pago.UnidadId = vm.UnidadId;
@@ -241,14 +233,14 @@ public partial class PagosController : Controller
             if (archivoNuevo is not null) pago.Comprobante = archivoNuevo;
 
             await _db.SaveChangesAsync();
-            if (archivoNuevo is not null) BorrarArchivo(anterior);
+            if (archivoNuevo is not null) _comprobantes.Borrar(anterior);
 
             TempData["Exito"] = "Pago actualizado.";
             return RedirectToAction(nameof(Details), new { id });
         }
         catch (DbUpdateException ex)
         {
-            BorrarArchivo(archivoNuevo);
+            _comprobantes.Borrar(archivoNuevo);
             _logger.LogWarning(ex, "No se pudo actualizar el pago {Id}", id);
             ModelState.AddModelError(string.Empty, "No se pudo guardar el pago. Verifique la referencia bancaria.");
             await CargarListasAsync(vm);
@@ -289,7 +281,7 @@ public partial class PagosController : Controller
 
         _db.Pagos.Remove(pago);
         await _db.SaveChangesAsync();
-        BorrarArchivo(pago.Comprobante);
+        _comprobantes.Borrar(pago.Comprobante);
 
         TempData["Exito"] = "Pago eliminado.";
         return RedirectToAction(nameof(Index), new { estado = EstadoPago.PorVerificar });
@@ -417,12 +409,9 @@ public partial class PagosController : Controller
     private static void Normalizar(PagoFormViewModel vm)
     {
         vm.Torre = vm.Torre?.Trim();
-        vm.Referencia = string.IsNullOrWhiteSpace(vm.Referencia) ? null : vm.Referencia.Trim().ToUpperInvariant();
+        vm.Referencia = ReglasPago.NormalizarReferencia(vm.Referencia);
         if (vm.ResidenteId is <= 0) vm.ResidenteId = null;
     }
-
-    [GeneratedRegex("^[A-Z0-9-]{4,40}$")]
-    private static partial Regex FormatoReferencia();
 
     /// <summary>
     /// VALIDACIONES DE BACK-END del pago (dato sensible del Core: el dinero).
@@ -443,104 +432,22 @@ public partial class PagosController : Controller
             ModelState.AddModelError(nameof(vm.ResidenteId), "El residente seleccionado no pertenece a la unidad.");
 
         // 3. Fecha de pago: no futura ni con más de un año de antigüedad
-        if (vm.FechaPago.Date > DateTime.Today)
-            ModelState.AddModelError(nameof(vm.FechaPago), "La fecha de pago no puede ser futura.");
-        else if (vm.FechaPago.Date < DateTime.Today.AddYears(-1))
-            ModelState.AddModelError(nameof(vm.FechaPago), "La fecha de pago no puede tener más de un año de antigüedad.");
+        var errorFecha = ReglasPago.ValidarFecha(vm.FechaPago);
+        if (errorFecha is not null) ModelState.AddModelError(nameof(vm.FechaPago), errorFecha);
 
         // 4. Monto: positivo, máximo 2 decimales y NO mayor al saldo total de la unidad
         if (vm.Monto <= 0)
             ModelState.AddModelError(nameof(vm.Monto), "El monto debe ser mayor que 0.");
-        else if (decimal.Round(vm.Monto, 2) != vm.Monto)
-            ModelState.AddModelError(nameof(vm.Monto), "El monto admite como máximo dos decimales.");
-        else if (unidad is not null && ModelState.GetFieldValidationState(nameof(vm.FechaPago)) != Microsoft.AspNetCore.Mvc.ModelBinding.ModelValidationState.Invalid)
-        {
-            var saldo = await _cobranza.SaldoUnidadAsync(unidad.Id, vm.FechaPago.Date);
-            if (saldo <= 0)
-                ModelState.AddModelError(nameof(vm.Monto), $"La unidad {unidad.Codigo} no tiene saldo pendiente.");
-            else if (vm.Monto > saldo)
-                ModelState.AddModelError(nameof(vm.Monto),
-                    $"El monto supera el saldo total de la unidad {unidad.Codigo} ({saldo:C}) a la fecha del pago.");
-        }
+        else if (unidad is not null && errorFecha is null &&
+                 await _reglas.ValidarMontoAsync(unidad, vm.Monto, vm.FechaPago) is { } errorMonto)
+            ModelState.AddModelError(nameof(vm.Monto), errorMonto);
 
         // 5. Referencia bancaria: obligatoria para transferencia/depósito, con formato y sin duplicados
-        if (vm.Metodo != MetodoPago.Efectivo)
-        {
-            if (vm.Referencia is null)
-                ModelState.AddModelError(nameof(vm.Referencia), "La referencia es obligatoria para transferencias y depósitos.");
-            else if (!FormatoReferencia().IsMatch(vm.Referencia))
-                ModelState.AddModelError(nameof(vm.Referencia), "Use de 4 a 40 letras, números o guiones.");
-        }
-        else if (vm.Referencia is not null && !FormatoReferencia().IsMatch(vm.Referencia))
-        {
-            ModelState.AddModelError(nameof(vm.Referencia), "Use de 4 a 40 letras, números o guiones.");
-        }
-
-        if (vm.Referencia is not null && await _db.Pagos.AnyAsync(p =>
-                p.Id != vm.Id && p.Metodo == vm.Metodo && p.Referencia == vm.Referencia &&
-                p.Estado != EstadoPago.Rechazado))
-            ModelState.AddModelError(nameof(vm.Referencia),
-                $"La referencia {vm.Referencia} ya fue registrada en otro pago ({Formato.Texto(vm.Metodo)}).");
+        if (await _reglas.ValidarReferenciaAsync(vm.Metodo, vm.Referencia, vm.Id) is { } errorReferencia)
+            ModelState.AddModelError(nameof(vm.Referencia), errorReferencia);
 
         // 6. Comprobante: tipo y tamaño verificados en el servidor (incluida la firma del archivo)
-        if (vm.Archivo is not null)
-        {
-            var error = await ValidarComprobanteAsync(vm.Archivo);
-            if (error is not null) ModelState.AddModelError(nameof(vm.Archivo), error);
-        }
-    }
-
-    private static async Task<string?> ValidarComprobanteAsync(IFormFile archivo)
-    {
-        if (archivo.Length == 0) return "El archivo está vacío.";
-        if (archivo.Length > TamanoMaximoComprobante) return "El comprobante no puede superar 2 MB.";
-
-        var extension = Path.GetExtension(archivo.FileName).ToLowerInvariant();
-        if (!ExtensionesPermitidas.Contains(extension)) return "Solo se aceptan archivos JPG, PNG o PDF.";
-
-        // Firma (magic bytes): evita archivos renombrados con otra extensión
-        var cabecera = new byte[8];
-        await using var stream = archivo.OpenReadStream();
-        var leidos = await stream.ReadAsync(cabecera);
-        bool firmaValida = extension switch
-        {
-            ".pdf" => leidos >= 4 && cabecera[0] == 0x25 && cabecera[1] == 0x50 && cabecera[2] == 0x44 && cabecera[3] == 0x46,
-            ".png" => leidos >= 4 && cabecera[0] == 0x89 && cabecera[1] == 0x50 && cabecera[2] == 0x4E && cabecera[3] == 0x47,
-            _ => leidos >= 3 && cabecera[0] == 0xFF && cabecera[1] == 0xD8 && cabecera[2] == 0xFF
-        };
-        return firmaValida ? null : "El contenido del archivo no corresponde a su extensión.";
-    }
-
-    /// <summary>Los comprobantes se guardan FUERA de wwwroot: solo se descargan con sesión de administrador.</summary>
-    private string CarpetaComprobantes() => Path.Combine(_env.ContentRootPath, "App_Data", "comprobantes");
-
-    private async Task<string> GuardarComprobanteAsync(IFormFile archivo)
-    {
-        var carpeta = CarpetaComprobantes();
-        Directory.CreateDirectory(carpeta);
-        var nombre = $"{Guid.NewGuid():N}{Path.GetExtension(archivo.FileName).ToLowerInvariant()}";
-        await using var destino = System.IO.File.Create(Path.Combine(carpeta, nombre));
-        await archivo.CopyToAsync(destino);
-        return $"comprobantes/{nombre}";
-    }
-
-    private string? RutaFisica(string rutaRelativa)
-    {
-        var nombre = Path.GetFileName(rutaRelativa);   // impide rutas tipo ../../
-        return string.IsNullOrEmpty(nombre) ? null : Path.Combine(CarpetaComprobantes(), nombre);
-    }
-
-    private void BorrarArchivo(string? rutaRelativa)
-    {
-        if (string.IsNullOrEmpty(rutaRelativa)) return;
-        var archivo = RutaFisica(rutaRelativa);
-        try
-        {
-            if (archivo is not null && System.IO.File.Exists(archivo)) System.IO.File.Delete(archivo);
-        }
-        catch (IOException ex)
-        {
-            _logger.LogWarning(ex, "No se pudo borrar el comprobante {Archivo}", archivo);
-        }
+        if (vm.Archivo is not null && await _comprobantes.ValidarAsync(vm.Archivo) is { } errorArchivo)
+            ModelState.AddModelError(nameof(vm.Archivo), errorArchivo);
     }
 }

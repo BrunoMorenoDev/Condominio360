@@ -1,0 +1,70 @@
+@model IEnumerable<AreaComunal>
+@{
+    ViewData["Title"] = "Áreas comunales";
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Áreas comunales</h1>
+    <div class="d-flex gap-2">
+        <a asp-controller="Reservas" asp-action="Index" class="btn btn-outline-primary"><i class="bi bi-calendar-check"></i> Reservas</a>
+        <a asp-action="Create" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Registrar área</a>
+    </div>
+</div>
+
+<partial name="_Alertas" />
+
+@if (!Model.Any())
+{
+    <div class="vacio">
+        <p class="mb-2">Aún no hay áreas comunales registradas.</p>
+        <a asp-action="Create" class="btn btn-primary btn-sm">Registrar la primera área</a>
+    </div>
+}
+else
+{
+    <div class="table-responsive tabla-caja">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Área</th>
+                    <th class="text-center">Capacidad</th>
+                    <th>Horario</th>
+                    <th class="text-end">Costo de uso</th>
+                    <th class="text-center">Reservas pendientes</th>
+                    <th>Estado</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var a in Model)
+                {
+                    var pendientes = a.Reservas.Count(r => r.Estado == EstadoReserva.Solicitada && r.Fecha >= DateTime.Today);
+                    <tr>
+                        <td>
+                            <strong>@a.Nombre</strong>
+                            @if (!string.IsNullOrEmpty(a.Descripcion)) { <div class="texto-pequeno">@a.Descripcion</div> }
+                        </td>
+                        <td class="text-center">@a.Capacidad</td>
+                        <td>@a.HoraApertura.ToString("HH:mm") – @a.HoraCierre.ToString("HH:mm")</td>
+                        <td class="text-end monto">@(a.CostoUso == 0 ? "Gratis" : a.CostoUso.ToString("C"))</td>
+                        <td class="text-center">
+                            @if (pendientes > 0)
+                            {
+                                <a asp-controller="Reservas" asp-action="Index" asp-route-areaId="@a.Id" asp-route-estado="Solicitada" class="estado estado-pend">@pendientes por aprobar</a>
+                            }
+                            else { <span class="text-secondary">—</span> }
+                        </td>
+                        <td>
+                            @if (a.Activa) { <span class="estado estado-ok">Activa</span> }
+                            else { <span class="estado estado-neutro">Inactiva</span> }
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a asp-action="Details" asp-route-id="@a.Id" class="btn btn-sm btn-outline-secondary" title="Ver"><i class="bi bi-eye"></i><span class="visually-hidden">Ver</span></a>
+                            <a asp-action="Edit" asp-route-id="@a.Id" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i><span class="visually-hidden">Editar</span></a>
+                            <a asp-action="Delete" asp-route-id="@a.Id" class="btn btn-sm btn-outline-danger" title="Eliminar"><i class="bi bi-trash"></i><span class="visually-hidden">Eliminar</span></a>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
