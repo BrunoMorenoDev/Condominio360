@@ -14,4 +14,9 @@ public class PanelViewModel
     public decimal TasaRecaudacion { get; set; }
     public string PeriodoRecaudacion { get; set; } = string.Empty;
     public int PagosPorVerificar { get; set; }
+
+    // Comunidad
+    public int ReservasPorAprobar { get; set; }
+    public int VisitasHoy { get; set; }
+    public int UsuariosActivos { get; set; }
 }

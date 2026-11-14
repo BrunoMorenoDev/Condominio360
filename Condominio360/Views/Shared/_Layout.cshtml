@@ -2,6 +2,8 @@
     var controlador = ViewContext.RouteData.Values["controller"]?.ToString();
     var autenticado = User.Identity?.IsAuthenticated == true;
     var esAdmin = User.IsInRole(Rol.Administrador);
+    var esResidente = User.IsInRole(Rol.Residente);
+    var esGuardia = User.IsInRole(Rol.Guardia);
     var nombre = User.FindFirst("NombreCompleto")?.Value ?? User.Identity?.Name;
     var rol = User.FindFirst(ClaimTypes.Role)?.Value;
     var inicio = autenticado ? "Panel" : "Home";
@@ -35,7 +37,10 @@
                     @if (autenticado)
                     {
                         <ul class="navbar-nav me-auto">
-                            <li class="nav-item"><a class="nav-link @Activo("Panel")" asp-controller="Panel" asp-action="Index"><i class="bi bi-speedometer2"></i> Panel</a></li>
+                            @if (!esGuardia)
+                            {
+                                <li class="nav-item"><a class="nav-link @Activo("Panel")" asp-controller="Panel" asp-action="Index"><i class="bi bi-speedometer2"></i> @(esResidente ? "Inicio" : "Panel")</a></li>
+                            }
                             @if (esAdmin)
                             {
                                 <li class="nav-item"><a class="nav-link @Activo("Unidades")" asp-controller="Unidades" asp-action="Index"><i class="bi bi-buildings"></i> Unidades</a></li>
@@ -56,14 +61,48 @@
                                         <li><a class="dropdown-item @Activo("ConfiguracionCobro")" asp-controller="ConfiguracionCobro" asp-action="Index"><i class="bi bi-sliders"></i> Configuración de cobro</a></li>
                                     </ul>
                                 </li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle @Activo("AreasComunales", "Reservas", "Garita")"
+                                       href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bi bi-tree"></i> Comunidad
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item @Activo("Reservas")" asp-controller="Reservas" asp-action="Index"><i class="bi bi-calendar-check"></i> Reservas</a></li>
+                                        <li><a class="dropdown-item @Activo("AreasComunales")" asp-controller="AreasComunales" asp-action="Index"><i class="bi bi-house-gear"></i> Áreas comunales</a></li>
+                                        <li><hr class="dropdown-divider"></li>
+                                        <li><a class="dropdown-item @Activo("Garita")" asp-controller="Garita" asp-action="Index"><i class="bi bi-door-open"></i> Visitas (garita)</a></li>
+                                    </ul>
+                                </li>
+                                <li class="nav-item"><a class="nav-link @Activo("Usuarios")" asp-controller="Usuarios" asp-action="Index"><i class="bi bi-person-gear"></i> Usuarios</a></li>
+                            }
+                            else if (esResidente)
+                            {
+                                <li class="nav-item"><a class="nav-link @Activo("MiCuenta")" asp-controller="MiCuenta" asp-action="Index"><i class="bi bi-receipt"></i> Mi cuenta</a></li>
+                                <li class="nav-item"><a class="nav-link @Activo("MisReservas")" asp-controller="MisReservas" asp-action="Index"><i class="bi bi-calendar-check"></i> Reservas</a></li>
+                                <li class="nav-item"><a class="nav-link @Activo("MisVisitas")" asp-controller="MisVisitas" asp-action="Index"><i class="bi bi-person-check"></i> Visitas</a></li>
+                            }
+                            else if (esGuardia)
+                            {
+                                <li class="nav-item"><a class="nav-link @Activo("Garita")" asp-controller="Garita" asp-action="Index"><i class="bi bi-door-open"></i> Garita</a></li>
                             }
                         </ul>
-                        <div class="d-flex align-items-center gap-3">
-                            <span class="usuario-actual"><i class="bi bi-person-circle"></i> @nombre <span class="opacity-75">· @rol</span></span>
-                            <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
-                                <button type="submit" class="btn btn-sm btn-outline-light">Cerrar sesión</button>
-                            </form>
-                        </div>
+                        @* Usuario de la sesión: menú compacto con su rol y el cierre de sesión *@
+                        <ul class="navbar-nav ms-lg-2">
+                            <li class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle usuario-actual" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="bi bi-person-circle"></i> @nombre
+                                </a>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><span class="dropdown-item-text texto-pequeno">Rol: <strong>@rol</strong></span></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li>
+                                        <form asp-controller="Account" asp-action="Logout" method="post" class="m-0">
+                                            <button type="submit" class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Cerrar sesión</button>
+                                        </form>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
                     }
                     else
                     {
