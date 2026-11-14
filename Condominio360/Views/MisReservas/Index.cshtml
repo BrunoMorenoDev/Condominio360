@@ -1,0 +1,63 @@
+@model List<Reserva>
+@{
+    ViewData["Title"] = "Mis reservas";
+    var clasificacion = (ClasificacionMorosidad)ViewData["Clasificacion"]!;
+    var puedeReservar = (bool)ViewData["PuedeReservar"]!;
+}
+<div class="migas">Mi cuenta › Reservas</div>
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Mis reservas de áreas comunales</h1>
+    @if (puedeReservar)
+    {
+        <a asp-action="Solicitar" class="btn btn-primary"><i class="bi bi-calendar-plus"></i> Solicitar reserva</a>
+    }
+</div>
+
+<partial name="_Alertas" />
+
+@if (!puedeReservar)
+{
+    <div class="alert alert-warning">
+        <i class="bi bi-lock"></i>
+        Su unidad está clasificada como <span class="@Formato.ClaseClasificacion(clasificacion)">@Formato.Texto(clasificacion)</span>.
+        No puede reservar áreas comunales hasta regularizar su deuda.
+        <a asp-controller="MiCuenta" asp-action="Index" class="alert-link">Ver mi estado de cuenta</a>.
+    </div>
+}
+
+@if (!Model.Any())
+{
+    <div class="vacio"><p class="mb-0">Todavía no tiene reservas.</p></div>
+}
+else
+{
+    <div class="table-responsive tabla-caja">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr><th>Fecha</th><th>Horario</th><th>Área</th><th class="text-end">Costo</th><th>Estado</th><th class="text-end"></th></tr>
+            </thead>
+            <tbody>
+                @foreach (var r in Model)
+                {
+                    var cancelable = (r.Estado is EstadoReserva.Solicitada or EstadoReserva.Aprobada) && r.Fecha.Date >= DateTime.Today;
+                    <tr>
+                        <td>@r.Fecha.ToString("dd/MM/yyyy")</td>
+                        <td>@r.HoraInicio.ToString("HH:mm") – @r.HoraFin.ToString("HH:mm")</td>
+                        <td>@r.Area?.Nombre</td>
+                        <td class="text-end monto">@(r.Area is null || r.Area.CostoUso == 0 ? "Gratis" : r.Area.CostoUso.ToString("C"))</td>
+                        <td><span class="@Formato.ClaseEstado(r.Estado)">@r.Estado</span></td>
+                        <td class="text-end">
+                            @if (cancelable)
+                            {
+                                <form asp-action="Cancelar" asp-route-id="@r.Id" method="post" class="d-inline"
+                                      onsubmit="return confirm('¿Cancelar esta reserva?');">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"><i class="bi bi-x-lg"></i> Cancelar</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
