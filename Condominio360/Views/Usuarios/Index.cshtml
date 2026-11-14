@@ -1,0 +1,97 @@
+@model UsuariosIndexViewModel
+@{
+    ViewData["Title"] = "Usuarios";
+    var yo = User.IdUsuario();
+}
+<div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+    <h1 class="h3 mb-0">Usuarios del sistema</h1>
+    <a asp-action="Create" class="btn btn-primary"><i class="bi bi-person-plus"></i> Crear usuario</a>
+</div>
+
+<partial name="_Alertas" />
+
+<form asp-action="Index" method="get" class="filtros row g-2 align-items-end">
+    <div class="col-md-5">
+        <label class="form-label" for="buscar">Buscar</label>
+        <input id="buscar" name="buscar" class="form-control" value="@Model.Buscar" placeholder="Usuario, nombre o correo" />
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label" for="rolId">Rol</label>
+        <select id="rolId" name="rolId" class="form-select">
+            <option value="">Todos</option>
+            @foreach (var r in Model.Roles)
+            {
+                <option value="@r.Id" selected="@(Model.RolId == r.Id)">@r.Nombre</option>
+            }
+        </select>
+    </div>
+    <div class="col-6 col-md-2">
+        <label class="form-label" for="activo">Estado</label>
+        <select id="activo" name="activo" class="form-select">
+            <option value="">Todos</option>
+            <option value="true" selected="@(Model.Activo == true)">Activos</option>
+            <option value="false" selected="@(Model.Activo == false)">Inactivos</option>
+        </select>
+    </div>
+    <div class="col-md-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary flex-fill">Filtrar</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Limpiar</a>
+    </div>
+</form>
+
+@if (!Model.Usuarios.Any())
+{
+    <div class="vacio"><p class="mb-0">No hay usuarios con esos filtros.</p></div>
+}
+else
+{
+    <div class="table-responsive tabla-caja">
+        <table class="table table-hover align-middle mb-0">
+            <thead>
+                <tr><th>Usuario</th><th>Nombre</th><th>Correo</th><th>Rol</th><th>Residente vinculado</th><th>Estado</th><th class="text-end">Acciones</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var u in Model.Usuarios)
+                {
+                    <tr>
+                        <td><strong>@u.NombreUsuario</strong>@if (u.Id == yo) { <span class="texto-pequeno"> (usted)</span> }</td>
+                        <td>@u.NombreCompleto</td>
+                        <td>@u.Correo</td>
+                        <td>@u.Rol?.Nombre</td>
+                        <td>
+                            @if (u.Residente is not null)
+                            {
+                                @u.Residente.NombreCompleto <span class="placa">@u.Residente.Unidad?.Codigo</span>
+                            }
+                            else if (u.Rol?.Nombre == Rol.Residente)
+                            {
+                                <span class="estado estado-alerta">Sin vincular</span>
+                            }
+                            else { <span class="text-secondary">—</span> }
+                        </td>
+                        <td>
+                            @if (u.Activo) { <span class="estado estado-ok">Activo</span> }
+                            else { <span class="estado estado-neutro">Inactivo</span> }
+                        </td>
+                        <td class="text-end text-nowrap">
+                            <a asp-action="Edit" asp-route-id="@u.Id" class="btn btn-sm btn-outline-primary" title="Editar"><i class="bi bi-pencil"></i><span class="visually-hidden">Editar</span></a>
+                            @if (u.Id != yo)
+                            {
+                                <form asp-action="CambiarEstado" asp-route-id="@u.Id" method="post" class="d-inline">
+                                    @if (u.Activo)
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Desactivar"><i class="bi bi-person-x"></i> Desactivar</button>
+                                    }
+                                    else
+                                    {
+                                        <button type="submit" class="btn btn-sm btn-outline-success" title="Activar"><i class="bi bi-person-check"></i> Activar</button>
+                                    }
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}

@@ -1,0 +1,78 @@
+@model UsuarioFormViewModel
+<div asp-validation-summary="ModelOnly" class="text-danger small mb-2"></div>
+<input type="hidden" asp-for="Id" />
+
+<div class="row g-3">
+    <div class="col-sm-6">
+        <label asp-for="NombreUsuario" class="form-label"></label>
+        <input asp-for="NombreUsuario" class="form-control text-lowercase" autocomplete="off" />
+        <span asp-validation-for="NombreUsuario" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="RolId" class="form-label"></label>
+        <select asp-for="RolId" asp-items="Model.Roles" class="form-select">
+            <option value="0">Seleccione…</option>
+        </select>
+        <span asp-validation-for="RolId" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="NombreCompleto" class="form-label"></label>
+        <input asp-for="NombreCompleto" class="form-control" />
+        <span asp-validation-for="NombreCompleto" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="Correo" class="form-label"></label>
+        <input asp-for="Correo" class="form-control" type="email" />
+        <span asp-validation-for="Correo" class="text-danger small"></span>
+    </div>
+
+    @* Vínculo con el residente: solo para el rol Residente (dropdowns en cascada) *@
+    <div class="col-12" id="bloque-residente">
+        <div class="aviso-regla mb-2">Un usuario con rol <strong>Residente</strong> se vincula a su registro de residente: así solo ve los datos de su unidad.</div>
+        <div class="row g-3">
+            <div class="col-sm-4">
+                <label asp-for="Torre" class="form-label"></label>
+                <select asp-for="Torre" asp-items="Model.Torres" class="form-select"
+                        data-cascada-destino="#UnidadId"
+                        data-cascada-url="@Url.Action("Unidades", "Catalogos")?torre=">
+                    <option value="">Seleccione…</option>
+                </select>
+            </div>
+            <div class="col-sm-4">
+                <label asp-for="UnidadId" class="form-label"></label>
+                <select asp-for="UnidadId" asp-items="Model.Unidades" class="form-select"
+                        data-vacio="Seleccione…" data-sin-datos="La torre no tiene unidades"
+                        data-cascada-destino="#ResidenteId"
+                        data-cascada-url="@Url.Action("Residentes", "Catalogos")?unidadId=">
+                    <option value="">@(Model.Unidades.Any() ? "Seleccione…" : "Primero elija la torre")</option>
+                </select>
+            </div>
+            <div class="col-sm-4">
+                <label asp-for="ResidenteId" class="form-label"></label>
+                <select asp-for="ResidenteId" asp-items="Model.Residentes" class="form-select"
+                        data-vacio="Seleccione…" data-sin-datos="La unidad no tiene residentes">
+                    <option value="">Seleccione…</option>
+                </select>
+                <span asp-validation-for="ResidenteId" class="text-danger small"></span>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-sm-6">
+        <label asp-for="Password" class="form-label">@(Model.EsEdicion ? "Nueva contraseña (opcional)" : "Contraseña")</label>
+        <input asp-for="Password" class="form-control" autocomplete="new-password" />
+        <div class="form-text">8 a 64 caracteres con mayúsculas, minúsculas, números y un símbolo.@(Model.EsEdicion ? " Déjela vacía para no cambiarla." : "")</div>
+        <span asp-validation-for="Password" class="text-danger small"></span>
+    </div>
+    <div class="col-sm-6">
+        <label asp-for="ConfirmarPassword" class="form-label"></label>
+        <input asp-for="ConfirmarPassword" class="form-control" autocomplete="new-password" />
+        <span asp-validation-for="ConfirmarPassword" class="text-danger small"></span>
+    </div>
+    <div class="col-12">
+        <div class="form-check">
+            <input asp-for="Activo" class="form-check-input" />
+            <label asp-for="Activo" class="form-check-label"></label>
+        </div>
+    </div>
+</div>
