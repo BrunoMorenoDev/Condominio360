@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  🌐 <b>Demo en línea:</b> <a href="URL_DE_AZURE">URL_DE_AZURE</a> · usuario <code>admin</code> / <code>Admin123*</code>
+  🌐 <b>Demo en línea:</b> <a href="https://condominio360-fm.azurewebsites.net">https://condominio360-fm.azurewebsites.net</a> · usuario <code>admin</code> / <code>Admin123*</code>
 </p>
 
 ---
@@ -140,6 +140,16 @@ Las reglas están en el **Modelo** (`Models/Cuota.cs`) y en el servicio del Core
 | **Guardia** | Garita: visitas del día, registro de ingreso y salida |
 
 El rol viaja como *claim* en la cookie de sesión. Cada controlador declara su rol (`[Authorize(Roles = "Administrador")]`, `Residente`, `Guardia,Administrador`); un usuario que abre una función de otro rol recibe `/Account/AccessDenied`. Los controladores del residente heredan de `ResidenteBaseController`, que obtiene la unidad **desde el usuario de la sesión**, nunca desde la URL ni el formulario.
+
+## 👤 Roles y permisos
+
+| Rol | Acceso actual |
+|---|---|
+| **Administrador** | Panel, unidades, residentes y todo el módulo de cobranza |
+| **Residente** | Inicia sesión y ve un aviso de módulo en desarrollo; no puede abrir pantallas de administración (`/Account/AccessDenied`) |
+| **Guardia** | Igual que Residente; su módulo (control de visitas) está planificado |
+
+El rol viaja como *claim* en la cookie de sesión y cada controlador de administración lleva `[Authorize(Roles = "Administrador")]`.
 
 ## 🗄️ Base de datos (Supabase)
 
