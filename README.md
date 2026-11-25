@@ -33,6 +33,7 @@
 - [Tecnologías utilizadas](#️-tecnologías-utilizadas)
 - [Acceso al proyecto y ejecución](#-acceso-al-proyecto-y-ejecución)
 - [Despliegue en Azure](#️-despliegue-en-azure)
+- [Notificación por correo al guardia](#-notificación-por-correo-al-guardia)
 - [Credenciales de prueba](#-credenciales-de-prueba)
 - [Arquitectura MVC](#-arquitectura-mvc)
 - [Seguridad](#-seguridad)
@@ -123,6 +124,7 @@ Las reglas están en el **Modelo** (`Models/Cuota.cs`) y en el servicio del Core
 **Garita (rol Guardia)**
 
 - 🛂 Visitas autorizadas del día con búsqueda por nombre, cédula, placa o unidad; **registrar ingreso y salida**; aviso de visitas que entraron otro día y no registran salida.
+- 📧 **Notificación por correo (Gmail)**: cuando un residente autoriza una visita, todos los guardias activos reciben un correo con los datos del visitante y un enlace a la garita.
 
 **Gestión base**
 
@@ -227,6 +229,7 @@ Torre / bloque  ──►  Unidad  ──►  Residente que paga
 | Autenticación | Cookie Authentication + `PasswordHasher` (PBKDF2) + roles |
 | Interfaz | Razor Views, Bootstrap 5.3, Bootstrap Icons |
 | Validación cliente | jQuery Validation Unobtrusive (el servidor siempre vuelve a validar) |
+| Correo electrónico | MailKit 4 + SMTP de Gmail (contraseña de aplicación) |
 | Despliegue | Azure App Service · Dockerfile multi-etapa disponible |
 | Control de versiones | Git + GitHub (Pull Requests, Conventional Commits) |
 
@@ -270,6 +273,7 @@ La aplicación está publicada en **Azure App Service** (Web App `condominio360-
 |---|---|
 | Servicio | Azure App Service (.NET 10) |
 | Cadena de conexión | Variable de entorno `ConnectionStrings__DefaultConnection` en *Configuración → Variables de entorno* (no se sube a Git) |
+| Correo de notificaciones | Variables de entorno `Correo__Usuario` y `Correo__Password` (ver [Notificación por correo al guardia](#-notificación-por-correo-al-guardia)) |
 | Secretos locales | `appsettings.Local.json` está excluido del publish (`CopyToPublishDirectory="Never"`) |
 | Datos mínimos | Al arrancar, `DbSeeder` garantiza roles, administrador y configuración de cobro |
 
@@ -291,6 +295,33 @@ docker run -p 8080:8080 -e ConnectionStrings__DefaultConnection="<cadena>" condo
 > **Zona horaria:** la app usa la hora del servidor para la garita, las reservas y las cuotas. En Azure App Service (Linux) agregue la variable `TZ=America/Guayaquil` (en Windows: `WEBSITE_TIME_ZONE=SA Pacific Standard Time`) para que las horas coincidan con Ecuador.
 
 > Los comprobantes de pago se guardan en `App_Data/comprobantes` del servidor. En el despliegue, los comprobantes de los datos de ejemplo no existen como archivo; los que se suban desde la app sí se guardan.
+
+## 📧 Notificación por correo al guardia
+
+Cuando un residente autoriza una visita (`MisVisitas/Autorizar`), la aplicación envía un correo a **todos los usuarios activos con rol Guardia** (a la dirección registrada en su usuario) con el visitante, cédula, placa, unidad, residente que autoriza, fecha esperada y un botón **Abrir garita**.
+
+| Pieza | Responsabilidad |
+|---|---|
+| `Services/CorreoOptions.cs` | Configuración de la sección `Correo` (host, puerto, cuenta y contraseña de aplicación) |
+| `Services/NotificacionCorreoService.cs` | Arma el mensaje (HTML + texto) y lo envía con **MailKit** por SMTP/STARTTLS |
+| `MisVisitasController.Autorizar` | Después de guardar la visita, busca los correos de los guardias y llama al servicio |
+
+**Configurar la cuenta de Gmail que envía:**
+
+1. En la cuenta de Google del sistema, activar la **verificación en 2 pasos**.
+2. Generar una **contraseña de aplicación** en <https://myaccount.google.com/apppasswords> (16 caracteres).
+3. Local: agregar a `appsettings.Local.json` (no se sube a Git):
+
+   ```json
+   "Correo": {
+     "Usuario": "cuenta-del-sistema@gmail.com",
+     "Password": "xxxx xxxx xxxx xxxx"
+   }
+   ```
+
+4. Azure: en *Configuración → Variables de entorno* agregar `Correo__Usuario` y `Correo__Password`.
+
+> Si el correo no está configurado o Gmail rechaza el envío, **la visita se registra igual**: el error queda en el log y el mensaje de confirmación no menciona la notificación. Para que el guardia reciba el aviso, su usuario debe tener un correo real (se edita en *Usuarios*).
 
 ## 🔑 Credenciales de prueba
 
@@ -330,7 +361,9 @@ Condominio360/
     │   ├── ReservasService.cs        # Horarios, cruces y bloqueo por morosidad (regla d.2)
     │   ├── ValidadorCedula.cs        # Cédula ecuatoriana (módulo 10)
     │   ├── ValidadorPlaca.cs         # Placas vehiculares ecuatorianas
-    │   └── ValidadorSesion.cs        # Revalida la cookie (usuario activo, rol y vínculo)
+    │   ├── ValidadorSesion.cs        # Revalida la cookie (usuario activo, rol y vínculo)
+    │   ├── CorreoOptions.cs          # Configuración SMTP (sección "Correo")
+    │   └── NotificacionCorreoService.cs # Correo al guardia cuando se autoriza una visita (MailKit)
     ├── Data/
     │   ├── AppDbContext.cs           # Mapeo a tablas snake_case de PostgreSQL
     │   └── DbSeeder.cs               # Roles, admin y configuración mínima
