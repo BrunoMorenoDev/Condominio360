@@ -10,6 +10,8 @@
   <ItemGroup>
     <!-- Proveedor de EF Core para PostgreSQL (Supabase) -->
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.0" />
+    <!-- Envío de correos por SMTP (notificación de visitas al guardia) -->
+    <PackageReference Include="MailKit" Version="4.17.0" />
   </ItemGroup>
 
   <ItemGroup>

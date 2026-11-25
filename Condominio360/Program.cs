@@ -39,6 +39,11 @@ builder.Services.AddScoped<ReglasPago>();
 builder.Services.AddScoped<ComprobanteService>();
 builder.Services.AddScoped<ReservasService>();
 
+// ---------- Notificaciones por correo (MailKit + SMTP de Gmail) ----------
+// Credenciales en appsettings.Local.json o en variables de entorno de Azure (Correo__Usuario, Correo__Password).
+builder.Services.Configure<CorreoOptions>(builder.Configuration.GetSection(CorreoOptions.Seccion));
+builder.Services.AddScoped<NotificacionCorreoService>();
+
 // ---------- Hash de contraseñas (PBKDF2 de ASP.NET Core Identity) ----------
 builder.Services.AddScoped<IPasswordHasher<Usuario>, PasswordHasher<Usuario>>();
 
