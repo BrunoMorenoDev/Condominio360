@@ -12,7 +12,12 @@ public class MisVisitasController : ResidenteBaseController
 {
     public const int DiasMaximoAnticipacion = 30;
 
-    public MisVisitasController(AppDbContext db) : base(db) { }
+    private readonly NotificacionCorreoService _correo;
+
+    public MisVisitasController(AppDbContext db, NotificacionCorreoService correo) : base(db)
+    {
+        _correo = correo;
+    }
 
     // GET: /MisVisitas
     public async Task<IActionResult> Index()
@@ -90,8 +95,31 @@ public class MisVisitasController : ResidenteBaseController
         Db.Visitas.Add(visita);
         await Db.SaveChangesAsync();
 
-        TempData["Exito"] = $"Visita de {visita.NombreVisitante} autorizada para el {visita.FechaEsperada:dd/MM/yyyy}. La garita ya puede registrar su ingreso.";
+        // Aviso por correo a los guardias activos (si falla, la visita igual queda registrada)
+        var notificados = await NotificarGuardiasAsync(visita, residente);
+
+        TempData["Exito"] = $"Visita de {visita.NombreVisitante} autorizada para el {visita.FechaEsperada:dd/MM/yyyy}. La garita ya puede registrar su ingreso."
+            + (notificados > 0 ? " Se notificó a la garita por correo electrónico." : string.Empty);
         return RedirectToAction(nameof(Index));
+    }
+
+    /// <summary>Envía el correo de la visita recién autorizada a todos los usuarios activos con rol Guardia.</summary>
+    private async Task<int> NotificarGuardiasAsync(Visita visita, Residente residente)
+    {
+        var correosGuardias = await Db.Usuarios.AsNoTracking()
+            .Where(u => u.Activo && u.Rol!.Nombre == Rol.Guardia)
+            .Select(u => u.Correo)
+            .ToListAsync();
+
+        var enlaceGarita = Url.Action("Index", "Garita",
+            new { fecha = visita.FechaEsperada.ToString("yyyy-MM-dd") }, Request.Scheme);
+
+        return await _correo.NotificarVisitaAutorizadaAsync(
+            visita,
+            residente.Unidad?.Codigo ?? "-",
+            $"{residente.Nombres} {residente.Apellidos}".Trim(),
+            correosGuardias,
+            enlaceGarita);
     }
 
     // POST: /MisVisitas/Cancelar/5  (solo visitas de su unidad que todavía no ingresan)
